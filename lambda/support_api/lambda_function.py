@@ -682,7 +682,7 @@ def handle_public_start_chat(body):
             'ticket_code': ticket_code,
             'last_message': f'{customer_name} started a chat',
             'last_sender': 'system', 'unread': 1,
-            'priority': 'normal', 'status': 'open',
+            'priority': 'normal', 'status': 'waiting',
             'active_agents': {},
             'created_at': ts, 'updated_at': ts
         })

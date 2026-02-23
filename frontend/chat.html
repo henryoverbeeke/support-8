@@ -7,26 +7,27 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root { --bg: #f8fafc; --surface: #fff; --border: #e2e8f0; --primary: #6366f1; --primary-hover: #818cf8; --text: #1e293b; --muted: #64748b; --light: #f1f5f9; --danger: #ef4444; --success: #22c55e; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; align-items: center; justify-content: center; }
+        html { height: 100%; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; -webkit-text-size-adjust: 100%; }
 
         .chat-container { width: 100%; max-width: 480px; height: 100vh; max-height: 700px; background: var(--surface); border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,.08); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
-        @media (max-width: 520px) { .chat-container { max-height: 100vh; border-radius: 0; border: none; } }
 
-        .chat-header { padding: 18px 20px; background: var(--primary); color: white; }
+        .chat-header { padding: 16px 20px; background: var(--primary); color: white; flex-shrink: 0; }
         .chat-header h2 { font-size: 17px; font-weight: 700; }
         .chat-header p { font-size: 13px; opacity: .8; margin-top: 2px; }
-        .header-badges { margin-top: 6px; display: flex; gap: 6px; }
+        .chat-header p:empty { display: none; }
+        .header-badges { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
         .header-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; }
 
         /* Landing */
-        .landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; text-align: center; overflow-y: auto; }
         .landing h2 { font-size: 22px; margin-bottom: 6px; }
         .landing > p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
         .landing-section { width: 100%; max-width: 300px; margin-bottom: 20px; }
         .landing-section h3 { font-size: 14px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
-        .landing-section input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); font-size: 15px; outline: none; text-align: center; margin-bottom: 10px; }
+        .landing-section input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); font-size: 16px; outline: none; text-align: center; margin-bottom: 10px; -webkit-appearance: none; }
         .landing-section input:focus { border-color: var(--primary); }
-        .land-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .land-btn { width: 100%; padding: 14px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; -webkit-appearance: none; }
         .land-btn-primary { background: var(--primary); color: white; }
         .land-btn-primary:hover { background: var(--primary-hover); }
         .land-btn-secondary { background: var(--light); color: var(--text); border: 1px solid var(--border); }
@@ -36,27 +37,28 @@
         .land-err { color: var(--danger); font-size: 13px; margin-bottom: 8px; display: none; }
 
         /* Ticket code display */
-        .ticket-banner { background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 12px 16px 0; text-align: center; }
+        .ticket-banner { background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 10px 12px 0; text-align: center; flex-shrink: 0; }
         .ticket-banner label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
-        .ticket-code-display { font-size: 32px; font-weight: 800; letter-spacing: 8px; color: var(--primary); font-family: 'SF Mono', monospace; margin: 4px 0; }
+        .ticket-code-display { font-size: 28px; font-weight: 800; letter-spacing: 6px; color: var(--primary); font-family: 'SF Mono', monospace; margin: 4px 0; }
         .ticket-banner p { font-size: 12px; color: var(--muted); }
 
         /* Messages */
-        .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+        .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; -webkit-overflow-scrolling: touch; }
+        .msg { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; }
         .msg-customer { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .msg-company { background: var(--light); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
         .msg-system { align-self: center; font-size: 12px; color: var(--muted); padding: 4px; }
         .msg-meta { font-size: 11px; margin-top: 3px; opacity: .6; }
 
-        .compose { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: var(--surface); }
-        .compose input { flex: 1; padding: 11px 14px; border-radius: 24px; border: 1px solid var(--border); font-size: 14px; outline: none; background: var(--light); }
+        .compose { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: var(--surface); flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        .compose input { flex: 1; padding: 11px 14px; border-radius: 24px; border: 1px solid var(--border); font-size: 16px; outline: none; background: var(--light); -webkit-appearance: none; min-width: 0; }
         .compose input:focus { border-color: var(--primary); background: #fff; }
-        .compose button { padding: 10px 18px; border-radius: 24px; border: none; background: var(--primary); color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .compose button { padding: 10px 16px; border-radius: 24px; border: none; background: var(--primary); color: white; font-size: 14px; font-weight: 600; cursor: pointer; flex-shrink: 0; -webkit-appearance: none; }
         .compose button:hover { background: var(--primary-hover); }
+        .compose button:active { background: var(--primary-hover); transform: scale(.97); }
 
         /* Closed overlay */
-        .closed-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
+        .closed-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
         .closed-overlay h2 { margin-bottom: 8px; }
         .closed-overlay p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
 
@@ -64,6 +66,26 @@
 
         /* Ticket code input */
         .code-input { font-size: 24px !important; letter-spacing: 8px; font-weight: 700; font-family: 'SF Mono', monospace; }
+
+        /* ── Mobile ── */
+        @media (max-width: 520px) {
+            body { align-items: stretch; }
+            .chat-container { max-height: none; height: 100%; border-radius: 0; border: none; box-shadow: none; }
+            .chat-header { padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); }
+            .landing { padding: 20px 16px; }
+            .landing h2 { font-size: 20px; }
+            .landing-section { max-width: 100%; }
+            .ticket-code-display { font-size: 24px; letter-spacing: 5px; }
+            .messages { padding: 10px; }
+            .msg { max-width: 88%; font-size: 15px; }
+        }
+
+        @media (max-width: 360px) {
+            .chat-header h2 { font-size: 15px; }
+            .landing h2 { font-size: 18px; }
+            .land-btn { padding: 12px; font-size: 15px; }
+            .ticket-code-display { font-size: 20px; letter-spacing: 4px; }
+        }
     </style>
 </head>
 <body>
@@ -71,7 +93,7 @@
 <div class="chat-container">
     <div class="chat-header">
         <h2 id="header-name">Support Chat</h2>
-        <p id="header-sub">We typically reply in a few minutes</p>
+        <p id="header-sub"></p>
         <div class="header-badges hidden" id="header-badges">
             <span class="header-badge" id="h-pri"></span>
             <span class="header-badge" id="h-st"></span>
