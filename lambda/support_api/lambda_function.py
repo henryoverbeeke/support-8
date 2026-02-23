@@ -13,6 +13,7 @@ table = dynamodb.Table('Support8')
 
 DEFAULT_EMPLOYEE_PASSWORD = 'Ee@123'
 ADMIN_TOGGLE_PASSWORD = os.environ.get('ADMIN_TOGGLE_PASSWORD', '')
+SUPER_ADMIN_EMAIL = 'henryoverbeeke@gmail.com'
 
 
 def resp(status, body):
@@ -209,8 +210,8 @@ def get_paywall_enabled():
 
 
 def handle_toggle_paywall(auth, body):
-    if auth['role'] != 'admin':
-        return resp(403, {'error': 'Admin only'})
+    if auth['email'] != SUPER_ADMIN_EMAIL:
+        return resp(403, {'error': 'Only the platform owner can toggle this'})
     pw = body.get('password', '')
     if pw != ADMIN_TOGGLE_PASSWORD:
         return resp(403, {'error': 'Wrong password'})
@@ -282,6 +283,7 @@ def handle_get_company(auth):
         'chat_code': item.get('chat_code', ''),
         'paid': bool(item.get('paid', False)),
         'role': auth['role'],
+        'is_super_admin': auth['email'] == SUPER_ADMIN_EMAIL,
         'agent_name': auth.get('agent_name', ''),
         'must_change_password': auth.get('must_change_password', False),
         'created_at': int(item.get('created_at', 0))

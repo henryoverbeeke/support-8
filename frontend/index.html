@@ -498,13 +498,17 @@ async function enterApp() {
     S.mustChangePw = co.must_change_password;
     const paywallOn = settings.paywall_enabled || false;
 
-    // Admin toggle
-    if (S.role === 'admin') {
+    // Admin toggle (only super admin sees paywall switch)
+    S.isSuperAdmin = co.is_super_admin || false;
+    if (S.isSuperAdmin) {
         document.getElementById('admin-bar').classList.remove('hidden');
         document.getElementById('paywall-toggle').checked = paywallOn;
-        document.getElementById('tab-team').style.display = '';
     } else {
         document.getElementById('admin-bar').classList.add('hidden');
+    }
+    if (S.role === 'admin') {
+        document.getElementById('tab-team').style.display = '';
+    } else {
         document.getElementById('tab-team').style.display = 'none';
     }
 
