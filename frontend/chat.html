@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #f8fafc; --surface: #fff; --border: #e2e8f0; --primary: #6366f1; --primary-hover: #818cf8; --text: #1e293b; --muted: #64748b; --light: #f1f5f9; --danger: #ef4444; --success: #22c55e; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+        .chat-container { width: 100%; max-width: 480px; height: 100vh; max-height: 700px; background: var(--surface); border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,.08); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
+        @media (max-width: 520px) { .chat-container { max-height: 100vh; border-radius: 0; border: none; } }
+
+        .chat-header { padding: 18px 20px; background: var(--primary); color: white; }
+        .chat-header h2 { font-size: 17px; font-weight: 700; }
+        .chat-header p { font-size: 13px; opacity: .8; margin-top: 2px; }
+        .header-badges { margin-top: 6px; display: flex; gap: 6px; }
+        .header-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; }
+
+        /* Landing */
+        .landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .landing h2 { font-size: 22px; margin-bottom: 6px; }
+        .landing > p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+        .landing-section { width: 100%; max-width: 300px; margin-bottom: 20px; }
+        .landing-section h3 { font-size: 14px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+        .landing-section input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); font-size: 15px; outline: none; text-align: center; margin-bottom: 10px; }
+        .landing-section input:focus { border-color: var(--primary); }
+        .land-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .land-btn-primary { background: var(--primary); color: white; }
+        .land-btn-primary:hover { background: var(--primary-hover); }
+        .land-btn-secondary { background: var(--light); color: var(--text); border: 1px solid var(--border); }
+        .land-btn-secondary:hover { background: var(--border); }
+        .divider { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 300px; margin: 4px 0 20px; color: var(--muted); font-size: 12px; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .land-err { color: var(--danger); font-size: 13px; margin-bottom: 8px; display: none; }
+
+        /* Ticket code display */
+        .ticket-banner { background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 12px 16px 0; text-align: center; }
+        .ticket-banner label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
+        .ticket-code-display { font-size: 32px; font-weight: 800; letter-spacing: 8px; color: var(--primary); font-family: 'SF Mono', monospace; margin: 4px 0; }
+        .ticket-banner p { font-size: 12px; color: var(--muted); }
+
+        /* Messages */
+        .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+        .msg-customer { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .msg-company { background: var(--light); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg-system { align-self: center; font-size: 12px; color: var(--muted); padding: 4px; }
+        .msg-meta { font-size: 11px; margin-top: 3px; opacity: .6; }
+
+        .compose { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: var(--surface); }
+        .compose input { flex: 1; padding: 11px 14px; border-radius: 24px; border: 1px solid var(--border); font-size: 14px; outline: none; background: var(--light); }
+        .compose input:focus { border-color: var(--primary); background: #fff; }
+        .compose button { padding: 10px 18px; border-radius: 24px; border: none; background: var(--primary); color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .compose button:hover { background: var(--primary-hover); }
+
+        /* Closed overlay */
+        .closed-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
+        .closed-overlay h2 { margin-bottom: 8px; }
+        .closed-overlay p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+        .hidden { display: none !important; }
+
+        /* Ticket code input */
+        .code-input { font-size: 24px !important; letter-spacing: 8px; font-weight: 700; font-family: 'SF Mono', monospace; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h2 id="header-name">Support Chat</h2>
+        <p id="header-sub">We typically reply in a few minutes</p>
+        <div class="header-badges hidden" id="header-badges">
+            <span class="header-badge" id="h-pri"></span>
+            <span class="header-badge" id="h-st"></span>
+        </div>
+    </div>
+
+    <!-- Landing: new chat or enter code -->
+    <div class="landing" id="v-landing">
+        <h2>How can we help?</h2>
+        <p>Start a new conversation or check on an existing ticket.</p>
+        <div class="land-err" id="land-err"></div>
+
+        <div class="landing-section">
+            <h3>New Chat</h3>
+            <input id="name-input" placeholder="Your name" onkeydown="if(event.key==='Enter')startChat()">
+            <button class="land-btn land-btn-primary" onclick="startChat()">Start Chat</button>
+        </div>
+
+        <div class="divider">OR</div>
+
+        <div class="landing-section">
+            <h3>Have a ticket code?</h3>
+            <input id="code-input" class="code-input" placeholder="0000" maxlength="5" onkeydown="if(event.key==='Enter')lookupTicket()">
+            <button class="land-btn land-btn-secondary" onclick="lookupTicket()">Look Up Ticket</button>
+        </div>
+    </div>
+
+    <!-- Ticket code reveal after starting -->
+    <div class="ticket-banner hidden" id="ticket-banner">
+        <label>Your Ticket Code</label>
+        <div class="ticket-code-display" id="ticket-code-show"></div>
+        <p>Save this code to check back on your ticket later</p>
+    </div>
+
+    <!-- Chat view -->
+    <div class="messages hidden" id="messages"></div>
+    <div class="compose hidden" id="compose">
+        <input id="msg-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMsg()">
+        <button onclick="sendMsg()">Send</button>
+    </div>
+
+    <!-- Closed state -->
+    <div class="closed-overlay hidden" id="v-closed">
+        <h2>Ticket Closed</h2>
+        <p>This ticket has been resolved and closed. Start a new chat if you need more help.</p>
+        <button class="land-btn land-btn-primary" style="max-width:200px" onclick="backToLanding()">New Chat</button>
+    </div>
+</div>
+
+<script>
+const API = 'https://mfvollvrkc.execute-api.us-east-2.amazonaws.com/prod';
+const params = new URLSearchParams(window.location.search);
+const CODE = params.get('code') || '';
+
+let customerId = null;
+let customerName = '';
+let chatCode = CODE;
+let ticketCode = '';
+let companyName = '';
+let pollTimer = null;
+let lastMsgCount = 0;
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (!CODE) {
+        document.getElementById('v-landing').innerHTML = '<h2>Invalid Link</h2><p style="color:var(--muted)">This chat link is not valid. Ask the company for a new link.</p>';
+        return;
+    }
+});
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+async function startChat() {
+    const name = document.getElementById('name-input').value.trim();
+    if (!name) return;
+    document.getElementById('land-err').style.display = 'none';
+
+    const d = await fetch(`${API}/public/chat/start`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ code: CODE, name })
+    }).then(r => r.json());
+
+    if (d.error) {
+        document.getElementById('land-err').textContent = d.error;
+        document.getElementById('land-err').style.display = 'block';
+        return;
+    }
+
+    customerId = d.customer_id;
+    customerName = name;
+    ticketCode = d.ticket_code;
+    companyName = d.company_name || 'Support';
+
+    document.getElementById('ticket-code-show').textContent = ticketCode;
+    hide('v-landing');
+    show('ticket-banner');
+    show('messages');
+    show('compose');
+    document.getElementById('msg-input').focus();
+    document.getElementById('header-name').textContent = companyName + ' Support';
+
+    loadMessages();
+    pollTimer = setInterval(loadMessages, 2000);
+}
+
+async function lookupTicket() {
+    const code = document.getElementById('code-input').value.trim();
+    if (!code) return;
+    document.getElementById('land-err').style.display = 'none';
+
+    const d = await fetch(`${API}/public/chat/lookup`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ticket_code: code })
+    }).then(r => r.json());
+
+    if (d.error) {
+        document.getElementById('land-err').textContent = d.error;
+        document.getElementById('land-err').style.display = 'block';
+        return;
+    }
+
+    customerId = d.customer_id;
+    customerName = d.customer_name;
+    ticketCode = d.ticket_code;
+    chatCode = d.chat_code;
+    companyName = d.company_name || 'Support';
+
+    document.getElementById('ticket-code-show').textContent = ticketCode;
+    hide('v-landing');
+    show('ticket-banner');
+    show('messages');
+    show('compose');
+    document.getElementById('msg-input').focus();
+    document.getElementById('header-name').textContent = companyName + ' Support';
+
+    loadMessages();
+    pollTimer = setInterval(loadMessages, 2000);
+}
+
+async function loadMessages() {
+    const d = await fetch(`${API}/public/chat/messages?code=${chatCode}&customer_id=${customerId}`).then(r => r.json());
+
+    if (d.closed || d.error === 'closed') {
+        clearInterval(pollTimer);
+        hide('messages'); hide('compose'); hide('ticket-banner');
+        show('v-closed');
+        return;
+    }
+
+    if (d.error) return;
+
+    if (d.company_name) {
+        companyName = d.company_name;
+        document.getElementById('header-name').textContent = companyName + ' Support';
+    }
+
+    if (d.session) {
+        const badges = document.getElementById('header-badges');
+        badges.classList.remove('hidden');
+        const priColors = {urgent:'#ef4444',high:'#f59e0b',normal:'#6366f1',low:'#22c55e'};
+        const stColors = {open:'#22c55e',in_progress:'#6366f1',waiting:'#f59e0b',resolved:'#22c55e',closed:'#64748b'};
+        const pri = d.session.priority || 'normal';
+        const st = d.session.status || 'open';
+        const hp = document.getElementById('h-pri');
+        hp.textContent = pri; hp.style.background = (priColors[pri]||'#6366f1')+'22'; hp.style.color = priColors[pri]||'#6366f1';
+        const hs = document.getElementById('h-st');
+        hs.textContent = st.replace('_',' '); hs.style.background = (stColors[st]||'#6366f1')+'22'; hs.style.color = stColors[st]||'#6366f1';
+    }
+
+    const wrap = document.getElementById('messages');
+    const wasAtBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 60;
+    const msgs = d.messages || [];
+
+    if (msgs.length === lastMsgCount) return;
+    lastMsgCount = msgs.length;
+
+    wrap.innerHTML = msgs.map(m => {
+        const cls = m.sender === 'customer' ? 'msg-customer' : m.sender === 'system' ? 'msg-system' : 'msg-company';
+        const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        if (m.sender === 'system') return `<div class="msg ${cls}">${esc(m.message)}</div>`;
+        const label = m.sender === 'company' ? m.sender_name || companyName : '';
+        return `<div class="msg ${cls}">
+            ${m.sender === 'company' ? `<div style="font-size:12px;font-weight:600;margin-bottom:3px;opacity:.7">${esc(label)}</div>` : ''}
+            ${esc(m.message)}
+            <div class="msg-meta">${time}</div>
+        </div>`;
+    }).join('');
+
+    if (wasAtBottom) wrap.scrollTop = wrap.scrollHeight;
+}
+
+async function sendMsg() {
+    const input = document.getElementById('msg-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    const d = await fetch(`${API}/public/chat/send`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ code: chatCode, customer_id: customerId, message: msg, name: customerName })
+    }).then(r => r.json());
+
+    if (d.error && d.error.includes('closed')) {
+        clearInterval(pollTimer);
+        hide('messages'); hide('compose'); hide('ticket-banner');
+        show('v-closed');
+        return;
+    }
+    await loadMessages();
+}
+
+function backToLanding() {
+    hide('v-closed'); hide('messages'); hide('compose'); hide('ticket-banner'); hide('header-badges');
+    show('v-landing');
+    customerId = null; customerName = ''; ticketCode = ''; lastMsgCount = 0;
+    chatCode = CODE;
+    document.getElementById('name-input').value = '';
+    document.getElementById('code-input').value = '';
+    document.getElementById('header-name').textContent = 'Support Chat';
+}
+
+function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+</script>
+</body>
+</html>

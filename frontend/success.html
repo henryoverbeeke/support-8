@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - Support8</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0a0a0f; color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { background: #12121a; border: 1px solid #2a2a3a; border-radius: 16px; padding: 48px 40px; max-width: 440px; width: 90%; text-align: center; }
+        .check { width: 64px; height: 64px; background: rgba(34,197,94,.15); border-radius: 50%; display: grid; place-items: center; margin: 0 auto 20px; }
+        .check svg { width: 32px; height: 32px; }
+        h1 { font-size: 26px; margin-bottom: 8px; }
+        p { color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+        .status { font-size: 14px; margin-bottom: 20px; padding: 10px; border-radius: 8px; }
+        .status-activating { background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); color: #818cf8; }
+        .status-done { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: #22c55e; }
+        .status-err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #ef4444; }
+        .btn { display: inline-block; padding: 13px 36px; border-radius: 10px; background: #6366f1; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; }
+        .btn:hover { background: #818cf8; }
+        .logo { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 24px; }
+        .logo-icon { width: 36px; height: 36px; background: #6366f1; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #fff; }
+        .logo b { font-size: 20px; }
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #2a2a3a; border-top-color: #818cf8; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo"><div class="logo-icon">S8</div><b>Support8</b></div>
+
+    <div class="check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+    </div>
+
+    <h1>Payment Successful!</h1>
+    <p>Your payment has been received. We're activating your account now.</p>
+
+    <div class="status status-activating" id="status">
+        <span class="spinner"></span> Activating your account...
+    </div>
+
+    <a class="btn" id="go-btn" href="index.html" style="display:none">Go to Dashboard</a>
+</div>
+
+<script>
+const API = 'https://mfvollvrkc.execute-api.us-east-2.amazonaws.com/prod';
+
+window.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('s8_token');
+    const statusEl = document.getElementById('status');
+    const goBtn = document.getElementById('go-btn');
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+
+    if (!token) {
+        statusEl.className = 'status status-err';
+        statusEl.innerHTML = 'You need to be logged in. <a href="index.html" style="color:#818cf8">Log in first</a>, then come back to this page.';
+        if (sessionId) {
+            localStorage.setItem('s8_pending_session', sessionId);
+        }
+        goBtn.textContent = 'Go to Login';
+        goBtn.style.display = 'inline-block';
+        return;
+    }
+
+    const sid = sessionId || localStorage.getItem('s8_pending_session');
+    if (!sid) {
+        statusEl.className = 'status status-err';
+        statusEl.textContent = 'No payment session found. Please complete payment first.';
+        return;
+    }
+
+    try {
+        const r = await fetch(`${API}/company/activate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ session_id: sid })
+        });
+        const d = await r.json();
+
+        if (d.activated) {
+            localStorage.removeItem('s8_pending_session');
+            statusEl.className = 'status status-done';
+            statusEl.textContent = d.already_paid
+                ? 'Your account is already active!'
+                : 'Payment verified and account activated!';
+            goBtn.style.display = 'inline-block';
+        } else if (d.error) {
+            statusEl.className = 'status status-err';
+            statusEl.textContent = d.error;
+        }
+    } catch (e) {
+        statusEl.className = 'status status-err';
+        statusEl.textContent = 'Something went wrong. Please try refreshing.';
+        goBtn.textContent = 'Try Again';
+        goBtn.href = window.location.href;
+        goBtn.style.display = 'inline-block';
+    }
+});
+</script>
+</body>
+</html>
