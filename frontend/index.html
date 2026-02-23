@@ -185,9 +185,56 @@
         .badge-waiting { background: rgba(245,158,11,.15); color: #f59e0b; }
         .badge-open { background: rgba(34,197,94,.1); color: var(--success); }
 
+        /* ── Mobile back button ── */
+        .mobile-back { display: none; background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 10px; margin-right: 6px; border-radius: 6px; }
+        .mobile-back:hover { background: rgba(99,102,241,.1); }
+
         @media (max-width: 700px) {
             .features { grid-template-columns: 1fr; }
             .hero h1 { font-size: 32px; }
+            .hero { padding: 60px 20px 40px; }
+            .hero p { font-size: 15px; }
+            .landing-nav { padding: 14px 16px; }
+        }
+
+        @media (max-width: 768px) {
+            .app { grid-template-columns: 1fr; }
+            .sidebar { display: flex; flex-direction: column; }
+            .chat-area { display: none; }
+
+            .app.mobile-chat-open .sidebar { display: none; }
+            .app.mobile-chat-open .chat-area { display: flex; flex-direction: column; }
+
+            .mobile-back { display: inline-block; }
+
+            .topbar { padding: 0 12px; }
+            .topbar-right .email { display: none; }
+            .topbar-right { gap: 6px; }
+            .topbar-left span { font-size: 14px; }
+
+            .share-bar { padding: 10px 12px; }
+            .share-row input { font-size: 11px; }
+
+            .chat-controls { padding: 8px 12px; gap: 6px; }
+            .ctrl-group { flex-wrap: wrap; gap: 4px; }
+            .ctrl-btn { padding: 5px 8px; font-size: 10px; }
+            .ctrl-divider { display: none; }
+
+            .compose { padding: 10px 12px; gap: 8px; }
+            .compose input { padding: 10px 12px; font-size: 14px; }
+            .compose button { padding: 10px 16px; font-size: 13px; }
+
+            .messages-wrap { padding: 12px; }
+            .msg { max-width: 85%; font-size: 14px; }
+
+            .chat-header { padding: 10px 12px; }
+            .chat-header-name { font-size: 14px; }
+
+            .chat-item { padding: 10px 12px; }
+
+            .auth-card { margin: 16px; padding: 28px 20px; border-radius: 12px; }
+            .modal-card { margin: 16px; padding: 28px 20px; }
+            .paywall-card { padding: 28px 20px; }
         }
     </style>
 </head>
@@ -326,6 +373,7 @@
         </div>
         <div id="chat-active" style="display:none;flex-direction:column;height:100%">
             <div class="chat-header">
+                <button class="mobile-back" onclick="mobileBackToList()">&larr; Back</button>
                 <div style="flex:1">
                     <div class="chat-header-name" id="chat-with"></div>
                     <div class="chat-header-agents" id="chat-agents-header"></div>
@@ -613,6 +661,7 @@ async function openChat(customerId, name, pri, st) {
     document.getElementById('chat-empty').style.display = 'none';
     document.getElementById('chat-active').style.display = 'flex';
     document.getElementById('chat-with').textContent = name;
+    document.getElementById('v-app').classList.add('mobile-chat-open');
     document.getElementById('compose-input').focus();
     updateControlButtons();
 
@@ -665,6 +714,7 @@ async function setStatus(st) {
         clearInterval(S.chatPollTimer);
         document.getElementById('chat-active').style.display = 'none';
         document.getElementById('chat-empty').style.display = 'flex';
+        document.getElementById('v-app').classList.remove('mobile-chat-open');
         loadChats();
         return;
     }
@@ -720,6 +770,10 @@ function timeAgo(ms) {
     if (s < 3600) return Math.floor(s / 60) + 'm ago';
     if (s < 86400) return Math.floor(s / 3600) + 'h ago';
     return Math.floor(s / 86400) + 'd ago';
+}
+
+function mobileBackToList() {
+    document.getElementById('v-app').classList.remove('mobile-chat-open');
 }
 
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
