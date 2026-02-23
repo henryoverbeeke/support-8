@@ -11,6 +11,9 @@ cognito = boto3.client('cognito-idp', region_name='us-east-2')
 lambda_client = boto3.client('lambda', region_name='us-east-2')
 table = dynamodb.Table('Support8')
 
+DEFAULT_EMPLOYEE_PASSWORD = 'Ee@123'
+ADMIN_TOGGLE_PASSWORD = os.environ.get('ADMIN_TOGGLE_PASSWORD', '')
+
 
 def resp(status, body):
     return {
@@ -19,7 +22,7 @@ def resp(status, body):
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-            'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
+            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
         },
         'body': json.dumps(body, default=str)
     }
@@ -39,7 +42,30 @@ def get_auth(headers):
     if auth_h.startswith('Bearer '):
         user = validate_cognito_token(auth_h[7:])
         if user:
-            return {'company_id': user['email']}
+            email = user['email']
+            # Check if admin/company owner
+            profile = table.get_item(Key={'pk': f'COMPANY#{email}', 'sk': 'PROFILE'})
+            if 'Item' in profile:
+                return {
+                    'email': email,
+                    'company_id': email,
+                    'role': 'admin',
+                    'name': profile['Item'].get('company_name', email),
+                    'agent_name': profile['Item'].get('company_name', email)
+                }
+            # Check if employee
+            emp_lookup = table.get_item(Key={'pk': f'EMPLOYEE_LOOKUP#{email}', 'sk': 'META'})
+            if 'Item' in emp_lookup:
+                emp = emp_lookup['Item']
+                return {
+                    'email': email,
+                    'company_id': emp['company_id'],
+                    'role': 'employee',
+                    'name': emp.get('employee_name', email),
+                    'agent_name': emp.get('employee_name', email),
+                    'must_change_password': emp.get('must_change_password', False)
+                }
+            return {'email': email, 'company_id': email, 'role': 'unknown', 'name': email, 'agent_name': email}
     return None
 
 
@@ -105,10 +131,30 @@ def handle_login(body):
             AuthParameters={'USERNAME': email, 'PASSWORD': password}
         )
         auth = r['AuthenticationResult']
+
+        # Determine role + check must_change_password
+        role = 'unknown'
+        must_change = False
+        name = email
+
+        profile = table.get_item(Key={'pk': f'COMPANY#{email}', 'sk': 'PROFILE'})
+        if 'Item' in profile:
+            role = 'admin'
+            name = profile['Item'].get('company_name', email)
+        else:
+            emp = table.get_item(Key={'pk': f'EMPLOYEE_LOOKUP#{email}', 'sk': 'META'})
+            if 'Item' in emp:
+                role = 'employee'
+                name = emp['Item'].get('employee_name', email)
+                must_change = bool(emp['Item'].get('must_change_password', False))
+
         return resp(200, {
             'access_token': auth['AccessToken'],
             'id_token': auth['IdToken'],
-            'refresh_token': auth['RefreshToken']
+            'refresh_token': auth['RefreshToken'],
+            'role': role,
+            'name': name,
+            'must_change_password': must_change
         })
     except cognito.exceptions.NotAuthorizedException:
         return resp(401, {'error': 'Invalid email or password'})
@@ -118,9 +164,42 @@ def handle_login(body):
         return resp(500, {'error': str(e)})
 
 
-# ─── Settings ───
+def handle_change_password(auth, body):
+    old_pw = body.get('old_password', '')
+    new_pw = body.get('new_password', '')
+    token = body.get('access_token', '')
+    if not old_pw or not new_pw or not token:
+        return resp(400, {'error': 'old_password, new_password, and access_token required'})
 
-ADMIN_EMAIL = 'henryoverbeeke@gmail.com'
+    try:
+        cognito.change_password(
+            PreviousPassword=old_pw,
+            ProposedPassword=new_pw,
+            AccessToken=token
+        )
+        # Clear the must_change_password flag
+        email = auth['email']
+        emp = table.get_item(Key={'pk': f'EMPLOYEE_LOOKUP#{email}', 'sk': 'META'})
+        if 'Item' in emp:
+            cid = emp['Item']['company_id']
+            table.update_item(
+                Key={'pk': f'EMPLOYEE_LOOKUP#{email}', 'sk': 'META'},
+                UpdateExpression='SET must_change_password = :f',
+                ExpressionAttributeValues={':f': False}
+            )
+            table.update_item(
+                Key={'pk': f'COMPANY#{cid}', 'sk': f'EMPLOYEE#{email}'},
+                UpdateExpression='SET must_change_password = :f',
+                ExpressionAttributeValues={':f': False}
+            )
+        return resp(200, {'message': 'Password changed successfully'})
+    except cognito.exceptions.NotAuthorizedException:
+        return resp(401, {'error': 'Current password is incorrect'})
+    except Exception as e:
+        return resp(500, {'error': str(e)})
+
+
+# ─── Settings ───
 
 def get_paywall_enabled():
     r = table.get_item(Key={'pk': 'SETTINGS', 'sk': 'PAYWALL'})
@@ -129,10 +208,8 @@ def get_paywall_enabled():
     return False
 
 
-ADMIN_TOGGLE_PASSWORD = os.environ.get('ADMIN_TOGGLE_PASSWORD', '')
-
 def handle_toggle_paywall(auth, body):
-    if auth['company_id'] != ADMIN_EMAIL:
+    if auth['role'] != 'admin':
         return resp(403, {'error': 'Admin only'})
     pw = body.get('password', '')
     if pw != ADMIN_TOGGLE_PASSWORD:
@@ -147,7 +224,6 @@ def handle_get_settings():
 
 
 def verify_stripe_session(session_id):
-    """Invoke the StripeVerify Lambda to check payment status."""
     try:
         r = lambda_client.invoke(
             FunctionName='Support8_StripeVerify',
@@ -164,8 +240,6 @@ def verify_stripe_session(session_id):
 
 def handle_activate(auth, body):
     cid = auth['company_id']
-
-    # Already paid? Skip verification.
     profile = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': 'PROFILE'}).get('Item', {})
     if profile.get('paid'):
         return resp(200, {'activated': True, 'already_paid': True})
@@ -178,17 +252,14 @@ def handle_activate(auth, body):
     if not valid:
         return resp(403, {'error': f'Payment verification failed: {detail}'})
 
-    # Prevent session reuse: check if this session was already used
     used = table.get_item(Key={'pk': f'STRIPE_SESSION#{session_id}', 'sk': 'META'})
     if 'Item' in used:
         return resp(400, {'error': 'This payment session has already been used'})
 
-    # Mark session as used
     table.put_item(Item={
         'pk': f'STRIPE_SESSION#{session_id}', 'sk': 'META',
         'company_id': cid, 'activated_at': int(time.time())
     })
-
     table.update_item(
         Key={'pk': f'COMPANY#{cid}', 'sk': 'PROFILE'},
         UpdateExpression='SET paid = :t, stripe_session = :s, paid_at = :ts',
@@ -210,10 +281,109 @@ def handle_get_company(auth):
         'company_name': item.get('company_name', ''),
         'chat_code': item.get('chat_code', ''),
         'paid': bool(item.get('paid', False)),
-        'is_admin': cid == ADMIN_EMAIL,
+        'role': auth['role'],
+        'agent_name': auth.get('agent_name', ''),
+        'must_change_password': auth.get('must_change_password', False),
         'created_at': int(item.get('created_at', 0))
     })
 
+
+# ─── Employee management (admin only) ───
+
+def handle_create_employee(auth, body):
+    if auth['role'] != 'admin':
+        return resp(403, {'error': 'Admin only'})
+
+    cid = auth['company_id']
+    emp_email = body.get('email', '').strip().lower()
+    emp_name = body.get('name', '').strip()
+
+    if not emp_email or not emp_name:
+        return resp(400, {'error': 'Employee email and name required'})
+
+    # Check if already exists
+    existing = table.get_item(Key={'pk': f'EMPLOYEE_LOOKUP#{emp_email}', 'sk': 'META'})
+    if 'Item' in existing:
+        return resp(400, {'error': 'Employee already exists'})
+
+    try:
+        client_id = get_client_id()
+        cognito.sign_up(
+            ClientId=client_id, Username=emp_email, Password=DEFAULT_EMPLOYEE_PASSWORD,
+            UserAttributes=[{'Name': 'email', 'Value': emp_email}]
+        )
+    except cognito.exceptions.UsernameExistsException:
+        pass
+    except Exception as e:
+        return resp(500, {'error': f'Failed to create user: {str(e)}'})
+
+    ts = int(time.time())
+    with table.batch_writer() as batch:
+        batch.put_item(Item={
+            'pk': f'COMPANY#{cid}', 'sk': f'EMPLOYEE#{emp_email}',
+            'employee_email': emp_email, 'employee_name': emp_name,
+            'must_change_password': True, 'created_at': ts,
+            'active_chat': '', 'last_active': 0
+        })
+        batch.put_item(Item={
+            'pk': f'EMPLOYEE_LOOKUP#{emp_email}', 'sk': 'META',
+            'company_id': cid, 'employee_name': emp_name,
+            'must_change_password': True
+        })
+
+    return resp(200, {
+        'employee_email': emp_email,
+        'employee_name': emp_name,
+        'default_password': DEFAULT_EMPLOYEE_PASSWORD
+    })
+
+
+def handle_list_employees(auth):
+    if auth['role'] != 'admin':
+        return resp(403, {'error': 'Admin only'})
+
+    cid = auth['company_id']
+    r = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :prefix)',
+        ExpressionAttributeValues={':pk': f'COMPANY#{cid}', ':prefix': 'EMPLOYEE#'}
+    )
+    employees = []
+    for item in r.get('Items', []):
+        employees.append({
+            'email': item.get('employee_email', ''),
+            'name': item.get('employee_name', ''),
+            'must_change_password': bool(item.get('must_change_password', False)),
+            'default_password': DEFAULT_EMPLOYEE_PASSWORD if item.get('must_change_password') else None,
+            'active_chat': item.get('active_chat', ''),
+            'last_active': int(item.get('last_active', 0)),
+            'created_at': int(item.get('created_at', 0))
+        })
+    return resp(200, {'employees': employees})
+
+
+def handle_delete_employee(auth, body):
+    if auth['role'] != 'admin':
+        return resp(403, {'error': 'Admin only'})
+
+    cid = auth['company_id']
+    emp_email = body.get('email', '').strip().lower()
+    if not emp_email:
+        return resp(400, {'error': 'Employee email required'})
+
+    table.delete_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'EMPLOYEE#{emp_email}'})
+    table.delete_item(Key={'pk': f'EMPLOYEE_LOOKUP#{emp_email}', 'sk': 'META'})
+
+    try:
+        pool_id = get_user_pool_id()
+        if pool_id:
+            cognito.admin_delete_user(UserPoolId=pool_id, Username=emp_email)
+    except Exception:
+        pass
+
+    return resp(200, {'deleted': emp_email})
+
+
+# ─── Chat with agent tracking ───
 
 def handle_get_chats(auth):
     cid = auth['company_id']
@@ -224,6 +394,12 @@ def handle_get_chats(auth):
     )
     chats = []
     for item in r.get('Items', []):
+        agents = item.get('active_agents', {})
+        if isinstance(agents, set):
+            agents = list(agents)
+        elif isinstance(agents, dict):
+            agents = list(agents.keys()) if agents else []
+
         chats.append({
             'customer_id': item.get('customer_id', ''),
             'customer_name': item.get('customer_name', ''),
@@ -232,12 +408,68 @@ def handle_get_chats(auth):
             'last_sender': item.get('last_sender', ''),
             'priority': item.get('priority', 'normal'),
             'status': item.get('status', 'open'),
+            'active_agents': agents,
             'updated_at': int(item.get('updated_at', 0)),
             'created_at': int(item.get('created_at', 0)),
             'unread': item.get('unread', 0)
         })
     chats.sort(key=lambda c: c['updated_at'], reverse=True)
     return resp(200, {'chats': chats})
+
+
+def handle_join_chat(auth, body):
+    cid = auth['company_id']
+    customer_id = body.get('customer_id', '')
+    if not customer_id:
+        return resp(400, {'error': 'customer_id required'})
+
+    agent_name = auth.get('agent_name', auth['email'])
+    agent_email = auth['email']
+
+    # Add to active_agents map on the session
+    table.update_item(
+        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+        UpdateExpression='SET active_agents.#ae = :an',
+        ExpressionAttributeNames={'#ae': agent_email},
+        ExpressionAttributeValues={':an': agent_name}
+    )
+
+    # Track on employee record
+    if auth['role'] == 'employee':
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'EMPLOYEE#{agent_email}'},
+            UpdateExpression='SET active_chat = :c, last_active = :t',
+            ExpressionAttributeValues={':c': customer_id, ':t': int(time.time())}
+        )
+
+    return resp(200, {'joined': customer_id})
+
+
+def handle_leave_chat(auth, body):
+    cid = auth['company_id']
+    customer_id = body.get('customer_id', '')
+    if not customer_id:
+        return resp(400, {'error': 'customer_id required'})
+
+    agent_email = auth['email']
+
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='REMOVE active_agents.#ae',
+            ExpressionAttributeNames={'#ae': agent_email}
+        )
+    except Exception:
+        pass
+
+    if auth['role'] == 'employee':
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'EMPLOYEE#{agent_email}'},
+            UpdateExpression='SET active_chat = :e',
+            ExpressionAttributeValues={':e': ''}
+        )
+
+    return resp(200, {'left': customer_id})
 
 
 def handle_get_chat_messages(auth, params):
@@ -275,15 +507,13 @@ def handle_company_send(auth, body):
     if not customer_id or not message:
         return resp(400, {'error': 'customer_id and message required'})
 
-    company = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': 'PROFILE'}).get('Item', {})
-    company_name = company.get('company_name', cid)
-
+    sender_name = auth.get('agent_name', auth['email'])
     ts = int(time.time() * 1000)
     msg_id = str(uuid.uuid4())
 
     table.put_item(Item={
         'pk': f'CHAT#{cid}#{customer_id}', 'sk': f'MSG#{ts}#{msg_id}',
-        'sender': 'company', 'sender_name': company_name,
+        'sender': 'company', 'sender_name': sender_name,
         'message': message, 'created_at': ts
     })
 
@@ -297,14 +527,11 @@ def handle_company_send(auth, body):
 
 
 def delete_chat(cid, customer_id):
-    """Delete session, all messages, and ticket code lookup."""
-    # Get the ticket code from the session first
     session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
     ticket_code = ''
     if 'Item' in session:
         ticket_code = session['Item'].get('ticket_code', '')
 
-    # Delete all messages
     msgs = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :prefix)',
         ExpressionAttributeValues={':pk': f'CHAT#{cid}#{customer_id}', ':prefix': 'MSG#'},
@@ -314,10 +541,8 @@ def delete_chat(cid, customer_id):
         for item in msgs.get('Items', []):
             batch.delete_item(Key={'pk': item['pk'], 'sk': item['sk']})
 
-    # Delete the session
     table.delete_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
 
-    # Delete the ticket code lookup
     if ticket_code:
         table.delete_item(Key={'pk': f'TICKET#{ticket_code}', 'sk': 'META'})
 
@@ -334,7 +559,6 @@ def handle_update_chat(auth, body):
     if not priority and not status:
         return resp(400, {'error': 'Provide priority or status to update'})
 
-    # If closing, delete everything
     if status == 'closed':
         delete_chat(cid, customer_id)
         return resp(200, {'status': 'closed', 'message': 'Ticket closed and deleted'})
@@ -364,15 +588,13 @@ def handle_update_chat(auth, body):
         ExpressionAttributeNames=names if names else None
     )
 
-    company = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': 'PROFILE'}).get('Item', {})
-    company_name = company.get('company_name', cid)
-
+    agent_name = auth.get('agent_name', auth['email'])
     parts = []
     if priority:
         parts.append(f'priority to {priority.upper()}')
     if status:
         parts.append(f'status to {status.replace("_", " ").title()}')
-    sys_msg = f'{company_name} updated {" and ".join(parts)}'
+    sys_msg = f'{agent_name} updated {" and ".join(parts)}'
 
     msg_id = str(uuid.uuid4())
     table.put_item(Item={
@@ -413,7 +635,6 @@ def handle_public_start_chat(body):
     ts = int(time.time() * 1000)
 
     with table.batch_writer() as batch:
-        # Chat session
         batch.put_item(Item={
             'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}',
             'customer_id': customer_id, 'customer_name': customer_name,
@@ -421,15 +642,14 @@ def handle_public_start_chat(body):
             'last_message': f'{customer_name} started a chat',
             'last_sender': 'system', 'unread': 1,
             'priority': 'normal', 'status': 'open',
+            'active_agents': {},
             'created_at': ts, 'updated_at': ts
         })
-        # Ticket code lookup
         batch.put_item(Item={
             'pk': f'TICKET#{ticket_code}', 'sk': 'META',
             'company_id': cid, 'customer_id': customer_id,
             'customer_name': customer_name, 'chat_code': code
         })
-        # System message
         batch.put_item(Item={
             'pk': f'CHAT#{cid}#{customer_id}', 'sk': f'MSG#{ts}#system',
             'sender': 'system', 'sender_name': 'System',
@@ -458,11 +678,9 @@ def handle_public_lookup(body):
     cid = item['company_id']
     customer_id = item['customer_id']
 
-    # Get company name
     company = resolve_chat_code(item.get('chat_code', ''))
     company_name = company.get('company_name', '') if company else ''
 
-    # Get session info
     session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
     if 'Item' not in session:
         return resp(404, {'error': 'Ticket not found. It may have been closed.'})
@@ -494,7 +712,6 @@ def handle_public_send(body):
 
     cid = company['company_id']
 
-    # Check if session still exists (not closed)
     session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
     if 'Item' not in session:
         return resp(410, {'error': 'This ticket has been closed.'})
@@ -530,13 +747,16 @@ def handle_public_messages(params):
 
     cid = company['company_id']
 
-    # Check if session still exists
     session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
     if 'Item' not in session:
         return resp(410, {'error': 'closed', 'closed': True})
 
     si = session['Item']
-    session_info = {'priority': si.get('priority', 'normal'), 'status': si.get('status', 'open'), 'ticket_code': si.get('ticket_code', '')}
+    session_info = {
+        'priority': si.get('priority', 'normal'),
+        'status': si.get('status', 'open'),
+        'ticket_code': si.get('ticket_code', '')
+    }
 
     r = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :prefix)',
@@ -635,9 +855,21 @@ def lambda_handler(event, context):
         return handle_company_send(auth, body)
     if path == '/chat/update' and method == 'POST':
         return handle_update_chat(auth, body)
+    if path == '/chat/join' and method == 'POST':
+        return handle_join_chat(auth, body)
+    if path == '/chat/leave' and method == 'POST':
+        return handle_leave_chat(auth, body)
+    if path == '/auth/change-password' and method == 'POST':
+        return handle_change_password(auth, body)
     if path == '/admin/toggle-paywall' and method == 'POST':
         return handle_toggle_paywall(auth, body)
     if path == '/company/activate' and method == 'POST':
         return handle_activate(auth, body)
+    if path == '/employees' and method == 'GET':
+        return handle_list_employees(auth)
+    if path == '/employees/create' and method == 'POST':
+        return handle_create_employee(auth, body)
+    if path == '/employees/delete' and method == 'POST':
+        return handle_delete_employee(auth, body)
 
     return resp(404, {'error': f'Not found: {method} {path}'})

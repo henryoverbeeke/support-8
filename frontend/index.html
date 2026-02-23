@@ -3,68 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support8 - Dashboard</title>
+    <title>Support8 - Customer Support Platform</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg: #0a0a0f;
-            --surface: #12121a;
-            --surface2: #1a1a25;
-            --border: #2a2a3a;
-            --primary: #6366f1;
-            --primary-hover: #818cf8;
-            --text: #e2e8f0;
-            --muted: #64748b;
-            --success: #22c55e;
-            --danger: #ef4444;
+            --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a25;
+            --border: #2a2a3a; --primary: #6366f1; --primary-hover: #818cf8;
+            --text: #e2e8f0; --muted: #64748b; --success: #22c55e; --danger: #ef4444;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+        .hidden { display: none !important; }
+
+        /* ── Landing ── */
+        .landing { min-height: 100vh; }
+        .landing-nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 40px; border-bottom: 1px solid var(--border); }
+        .landing-nav .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #fff; }
+        .logo b { font-size: 20px; }
+        .landing-btns { display: flex; gap: 10px; }
+        .hero { text-align: center; padding: 100px 20px 60px; max-width: 720px; margin: 0 auto; }
+        .hero h1 { font-size: 48px; line-height: 1.15; margin-bottom: 18px; background: linear-gradient(135deg, var(--text), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 18px; color: var(--muted); line-height: 1.6; margin-bottom: 36px; }
+        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
+        .feat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
+        .feat-card h3 { font-size: 16px; margin-bottom: 8px; }
+        .feat-card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+        .feat-icon { width: 40px; height: 40px; background: rgba(99,102,241,.12); border-radius: 10px; display: grid; place-items: center; font-size: 18px; margin-bottom: 14px; }
 
         /* ── Auth ── */
-        .auth-wrap { display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; }
-        .auth-card h1 { font-size: 26px; margin-bottom: 4px; }
-        .auth-card .sub { color: var(--muted); margin-bottom: 28px; font-size: 14px; }
-        .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-        .logo b { font-size: 20px; }
-        .logo-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #fff; }
-        .field { margin-bottom: 16px; }
-        .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
-        .field input { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; outline: none; }
+        .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; width: 100%; max-width: 400px; }
+        .auth-card h2 { font-size: 22px; margin-bottom: 4px; }
+        .auth-card .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+        .field { margin-bottom: 14px; }
+        .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+        .field input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; outline: none; }
         .field input:focus { border-color: var(--primary); }
-        .btn { padding: 11px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; }
         .btn-primary { background: var(--primary); color: #fff; width: 100%; }
         .btn-primary:hover { background: var(--primary-hover); }
+        .btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { border-color: var(--muted); }
         .btn-sm { padding: 7px 14px; font-size: 13px; }
-        .switch { text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .switch { text-align: center; margin-top: 14px; font-size: 13px; color: var(--muted); }
         .switch a { color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: none; }
-        .err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: var(--danger); padding: 9px 13px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
+        .err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: var(--danger); padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+
+        /* ── Paywall ── */
+        .paywall-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 200; display: flex; align-items: center; justify-content: center; }
+        .paywall-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; max-width: 420px; width: 90%; text-align: center; }
+        .paywall-card h2 { font-size: 24px; margin-bottom: 8px; }
+        .paywall-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+        .pay-btn { display: inline-block; padding: 14px 40px; border-radius: 10px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 700; text-decoration: none; }
+        .pay-btn:hover { background: var(--primary-hover); }
+        .pay-skip { display: block; margin-top: 14px; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+        /* ── Password change modal ── */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 300; display: flex; align-items: center; justify-content: center; }
+        .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; max-width: 400px; width: 90%; }
+        .modal-card h2 { font-size: 20px; margin-bottom: 6px; }
+        .modal-card .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
 
         /* ── App shell ── */
-        .app { display: none; height: 100vh; grid-template-columns: 320px 1fr; grid-template-rows: 56px 1fr; }
+        .app { height: 100vh; overflow: hidden; grid-template-columns: 320px 1fr; grid-template-rows: 56px 1fr; }
         .topbar { grid-column: 1 / -1; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         .topbar-left { display: flex; align-items: center; gap: 8px; }
         .topbar-left .logo-icon { width: 28px; height: 28px; font-size: 12px; border-radius: 6px; }
         .topbar-left span { font-size: 16px; font-weight: 700; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         .topbar-right .email { font-size: 13px; color: var(--muted); }
+        .role-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .5px; }
+        .role-admin { background: rgba(99,102,241,.15); color: var(--primary); }
+        .role-employee { background: rgba(34,197,94,.15); color: var(--success); }
         .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
         .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
 
-        /* ── Chat list ── */
-        .chat-list { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
-        .chat-list-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .chat-list-header h3 { font-size: 15px; }
-        .chat-count { font-size: 12px; color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 10px; }
-        .chat-item { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
-        .chat-item:hover { background: var(--surface2); }
-        .chat-item.active { background: rgba(99,102,241,.1); border-left: 3px solid var(--primary); }
-        .chat-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .chat-name { font-weight: 600; font-size: 14px; }
-        .chat-time { font-size: 11px; color: var(--muted); }
-        .chat-preview { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .unread-dot { width: 8px; height: 8px; background: var(--primary); border-radius: 50%; display: inline-block; margin-left: 6px; }
-        .no-chats { padding: 40px 20px; text-align: center; color: var(--muted); }
+        /* ── Sidebar tabs ── */
+        .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .sidebar-tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: .15s; text-transform: uppercase; letter-spacing: .5px; }
+        .sidebar-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .sidebar-tab:hover { color: var(--text); }
+        .sidebar-panel { flex: 1; overflow-y: auto; }
 
         /* ── Share link bar ── */
         .share-bar { padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface2); }
@@ -74,13 +95,57 @@
         .share-row button { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
         .share-row button:hover { color: var(--text); }
 
+        /* ── Admin bar ── */
+        .admin-bar { padding: 8px 16px; background: rgba(99,102,241,.08); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .admin-bar span { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+        .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+        .toggle-label { font-size: 12px; color: var(--muted); }
+        .toggle { position: relative; width: 40px; height: 22px; cursor: pointer; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: .2s; }
+        .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+        .toggle input:checked + .toggle-slider { background: var(--primary); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+        /* ── Chat list ── */
+        .chat-list-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .chat-list-header h3 { font-size: 14px; }
+        .chat-count { font-size: 12px; color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 10px; }
+        .chat-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+        .chat-item:hover { background: var(--surface2); }
+        .chat-item.active { background: rgba(99,102,241,.1); border-left: 3px solid var(--primary); }
+        .chat-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .chat-name { font-weight: 600; font-size: 13px; }
+        .chat-time { font-size: 11px; color: var(--muted); }
+        .chat-preview { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .unread-dot { width: 8px; height: 8px; background: var(--primary); border-radius: 50%; display: inline-block; margin-left: 6px; }
+        .no-chats { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+        .agents-online { display: flex; gap: 2px; margin-top: 4px; }
+        .agent-dot { padding: 1px 6px; font-size: 9px; font-weight: 600; border-radius: 4px; background: rgba(34,197,94,.15); color: var(--success); }
+
+        /* ── Employee panel ── */
+        .emp-section { padding: 16px; }
+        .emp-section h4 { font-size: 13px; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+        .emp-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .emp-form input { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; outline: none; }
+        .emp-form input:focus { border-color: var(--primary); }
+        .emp-card { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface2); }
+        .emp-card-top { display: flex; justify-content: space-between; align-items: center; }
+        .emp-card-name { font-size: 13px; font-weight: 600; }
+        .emp-card-email { font-size: 11px; color: var(--muted); }
+        .emp-card-meta { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+        .emp-card-activity { font-size: 11px; color: var(--success); }
+        .pw-hint { font-size: 11px; color: #f59e0b; font-family: monospace; background: rgba(245,158,11,.1); padding: 2px 6px; border-radius: 4px; }
+        .emp-delete { font-size: 11px; color: var(--danger); cursor: pointer; background: none; border: none; font-weight: 600; }
+        .emp-delete:hover { text-decoration: underline; }
+
         /* ── Chat area ── */
         .chat-area { display: flex; flex-direction: column; background: var(--bg); }
         .chat-area-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted); flex-direction: column; gap: 8px; }
         .chat-area-empty h3 { color: var(--text); }
-        .chat-header { padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 10px; }
+        .chat-header { padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 10px; }
         .chat-header-name { font-weight: 600; font-size: 15px; }
-        .chat-header-status { font-size: 12px; color: var(--success); }
+        .chat-header-agents { font-size: 11px; color: var(--success); }
         .messages-wrap { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
         .msg { max-width: 70%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
         .msg-customer { background: var(--surface); align-self: flex-start; border-bottom-left-radius: 4px; }
@@ -88,13 +153,14 @@
         .msg-system { align-self: center; font-size: 12px; color: var(--muted); background: none; padding: 4px; }
         .msg-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
         .msg-company .msg-meta { color: rgba(255,255,255,.6); }
+        .msg-sender-tag { font-size: 10px; font-weight: 700; opacity: .7; margin-bottom: 2px; }
         .compose { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 10px; }
         .compose input { flex: 1; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; outline: none; }
         .compose input:focus { border-color: var(--primary); }
         .compose button { padding: 10px 20px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
         .compose button:hover { background: var(--primary-hover); }
 
-        /* ── Priority & Status ── */
+        /* ── Priority & Status controls ── */
         .chat-controls { display: flex; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); align-items: center; flex-wrap: wrap; }
         .chat-controls label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
         .ctrl-group { display: flex; align-items: center; gap: 6px; }
@@ -103,7 +169,6 @@
         .ctrl-btn.sel { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,.1); }
         .ctrl-btn.pri-urgent.sel { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,.1); }
         .ctrl-btn.pri-high.sel { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,.1); }
-        .ctrl-btn.pri-normal.sel { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,.1); }
         .ctrl-btn.pri-low.sel { border-color: var(--success); color: var(--success); background: rgba(34,197,94,.1); }
         .ctrl-btn.st-resolved.sel { border-color: var(--success); color: var(--success); background: rgba(34,197,94,.1); }
         .ctrl-btn.st-closed.sel { border-color: var(--muted); color: var(--muted); background: rgba(100,116,139,.1); }
@@ -120,89 +185,105 @@
         .badge-waiting { background: rgba(245,158,11,.15); color: #f59e0b; }
         .badge-open { background: rgba(34,197,94,.1); color: var(--success); }
 
-        /* ── Paywall ── */
-        .paywall-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .paywall-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; max-width: 420px; width: 90%; text-align: center; }
-        .paywall-card h2 { font-size: 24px; margin-bottom: 8px; }
-        .paywall-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
-        .paywall-card .pay-btn { display: inline-block; padding: 14px 40px; border-radius: 10px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 700; text-decoration: none; transition: .15s; }
-        .paywall-card .pay-btn:hover { background: var(--primary-hover); }
-        .paywall-card .pay-skip { display: block; margin-top: 14px; font-size: 13px; color: var(--muted); cursor: pointer; }
-
-        /* ── Admin toggle ── */
-        .admin-bar { padding: 8px 16px; background: rgba(99,102,241,.08); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .admin-bar span { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-        .toggle-wrap { display: flex; align-items: center; gap: 8px; }
-        .toggle-label { font-size: 12px; color: var(--muted); }
-        .toggle { position: relative; width: 40px; height: 22px; cursor: pointer; }
-        .toggle input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: .2s; }
-        .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-        .toggle input:checked + .toggle-slider { background: var(--primary); }
-        .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+        @media (max-width: 700px) {
+            .features { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 32px; }
+        }
     </style>
 </head>
 <body>
 
-<!-- Auth: Login -->
-<div id="v-login" class="auth-wrap">
-    <div class="auth-card">
+<!-- ═══ Landing page ═══ -->
+<div id="v-landing" class="landing">
+    <nav class="landing-nav">
         <div class="logo"><div class="logo-icon">S8</div><b>Support8</b></div>
-        <h1>Welcome back</h1>
-        <p class="sub">Sign in to your support dashboard</p>
-        <div id="login-err" class="err"></div>
-        <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@company.com"></div>
-        <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="Password"></div>
-        <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
-        <div class="switch">No account? <a onclick="showView('signup')">Create one</a></div>
+        <div class="landing-btns">
+            <button class="btn btn-outline btn-sm" onclick="showAuth('login')">Sign In</button>
+            <button class="btn btn-primary btn-sm" onclick="showAuth('signup')">Get Started</button>
+        </div>
+    </nav>
+    <div class="hero">
+        <h1>Customer support that just works</h1>
+        <p>Real-time chat with your customers. Employee management, priority tracking, ticket codes, and a beautiful dashboard — all in one platform.</p>
+        <button class="btn btn-primary" onclick="showAuth('signup')" style="width:auto;padding:14px 40px;font-size:16px">Start Free</button>
+    </div>
+    <div class="features">
+        <div class="feat-card"><div class="feat-icon">💬</div><h3>Real-Time Chat</h3><p>Instant messaging between your team and customers. No refresh needed.</p></div>
+        <div class="feat-card"><div class="feat-icon">👥</div><h3>Team Management</h3><p>Add employees, track who's working on what, multiple agents per chat.</p></div>
+        <div class="feat-card"><div class="feat-icon">🎫</div><h3>Ticket Codes</h3><p>Customers get a 4-digit code to look up their conversations anytime.</p></div>
     </div>
 </div>
 
-<!-- Auth: Signup -->
-<div id="v-signup" class="auth-wrap" style="display:none">
+<!-- ═══ Auth modals ═══ -->
+<div id="auth-login" class="auth-overlay hidden">
     <div class="auth-card">
-        <div class="logo"><div class="logo-icon">S8</div><b>Support8</b></div>
-        <h1>Create account</h1>
+        <div class="logo" style="margin-bottom:16px"><div class="logo-icon">S8</div><b>Support8</b></div>
+        <h2>Welcome back</h2>
+        <p class="sub">Sign in to your dashboard</p>
+        <div id="login-err" class="err hidden"></div>
+        <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@company.com"></div>
+        <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+        <div class="switch">No account? <a onclick="showAuth('signup')">Create one</a> &middot; <a onclick="hideAuth()">Back</a></div>
+    </div>
+</div>
+
+<div id="auth-signup" class="auth-overlay hidden">
+    <div class="auth-card">
+        <div class="logo" style="margin-bottom:16px"><div class="logo-icon">S8</div><b>Support8</b></div>
+        <h2>Create account</h2>
         <p class="sub">Set up your company support chat</p>
-        <div id="signup-err" class="err"></div>
+        <div id="signup-err" class="err hidden"></div>
         <div class="field"><label>Company Name</label><input id="signup-company" placeholder="Acme Inc."></div>
         <div class="field"><label>Email</label><input id="signup-email" type="email" placeholder="you@company.com"></div>
-        <div class="field"><label>Password</label><input id="signup-pass" type="password" placeholder="Min 8 chars, upper + lower + number"></div>
+        <div class="field"><label>Password</label><input id="signup-pass" type="password" placeholder="Min 6 chars" onkeydown="if(event.key==='Enter')doSignup()"></div>
         <button class="btn btn-primary" onclick="doSignup()">Create Account</button>
-        <div class="switch">Have an account? <a onclick="showView('login')">Sign in</a></div>
+        <div class="switch">Have an account? <a onclick="showAuth('login')">Sign in</a> &middot; <a onclick="hideAuth()">Back</a></div>
     </div>
 </div>
 
-<!-- Paywall -->
-<div id="paywall" class="paywall-overlay" style="display:none">
+<!-- ═══ Password change modal ═══ -->
+<div id="pw-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h2>Change Your Password</h2>
+        <p class="sub">You're using a temporary password. Please set a new one to continue.</p>
+        <div id="pw-err" class="err hidden"></div>
+        <div class="field"><label>Current Password</label><input id="pw-old" type="password" value="Ee@123"></div>
+        <div class="field"><label>New Password</label><input id="pw-new" type="password" placeholder="Min 6 chars"></div>
+        <div class="field"><label>Confirm New Password</label><input id="pw-confirm" type="password" placeholder="Repeat new password" onkeydown="if(event.key==='Enter')doChangePassword()"></div>
+        <button class="btn btn-primary" onclick="doChangePassword()">Change Password</button>
+    </div>
+</div>
+
+<!-- ═══ Paywall ═══ -->
+<div id="paywall" class="paywall-overlay hidden">
     <div class="paywall-card">
         <div class="logo" style="justify-content:center;margin-bottom:16px"><div class="logo-icon">S8</div><b>Support8</b></div>
         <h2>Activate Your Account</h2>
-        <p>Complete payment to unlock your support dashboard, customer chat link, and all features.</p>
-        <a id="pay-link" class="pay-btn" href="https://buy.stripe.com/test_cNi14p82u0wi67L2pZ4c808" target="_blank">Pay & Activate</a>
+        <p>Complete payment to unlock your support dashboard.</p>
+        <a class="pay-btn" href="https://buy.stripe.com/test_cNi14p82u0wi67L2pZ4c808" target="_blank">Pay &amp; Activate</a>
         <span class="pay-skip" onclick="doLogout()">Sign out</span>
     </div>
 </div>
 
-<!-- App -->
-<div id="v-app" class="app">
+<!-- ═══ App ═══ -->
+<div id="v-app" class="app hidden">
     <div class="topbar">
         <div class="topbar-left"><div class="logo-icon">S8</div><span>Support8</span></div>
         <div class="topbar-right">
-            <span class="email" id="app-email"></span>
+            <span id="app-name" style="font-size:13px;font-weight:600"></span>
+            <span class="role-badge" id="app-role"></span>
+            <span class="email" id="app-email" style="font-size:12px"></span>
             <button class="btn-ghost" onclick="doLogout()">Sign Out</button>
         </div>
     </div>
 
-    <div class="chat-list">
-        <div class="admin-bar" id="admin-bar" style="display:none">
+    <div class="sidebar">
+        <div id="admin-bar" class="admin-bar hidden">
             <span>Admin</span>
             <div class="toggle-wrap">
                 <span class="toggle-label">Require Payment</span>
-                <label class="toggle">
-                    <input type="checkbox" id="paywall-toggle" onchange="togglePaywall()">
-                    <span class="toggle-slider"></span>
-                </label>
+                <label class="toggle"><input type="checkbox" id="paywall-toggle" onchange="togglePaywall()"><span class="toggle-slider"></span></label>
             </div>
         </div>
         <div class="share-bar">
@@ -212,23 +293,42 @@
                 <button onclick="copyLink()">Copy</button>
             </div>
         </div>
-        <div class="chat-list-header">
-            <h3>Conversations</h3>
-            <span class="chat-count" id="chat-count">0</span>
+        <div class="sidebar-tabs" id="sidebar-tabs">
+            <div class="sidebar-tab active" data-tab="chats" onclick="switchTab('chats')">Chats</div>
+            <div class="sidebar-tab" data-tab="team" onclick="switchTab('team')" id="tab-team" style="display:none">Team</div>
         </div>
-        <div id="chat-list-items"></div>
+        <div class="sidebar-panel" id="panel-chats">
+            <div class="chat-list-header">
+                <h3>Conversations</h3>
+                <span class="chat-count" id="chat-count">0</span>
+            </div>
+            <div id="chat-list-items"></div>
+        </div>
+        <div class="sidebar-panel hidden" id="panel-team">
+            <div class="emp-section">
+                <h4>Add Employee</h4>
+                <div class="emp-form">
+                    <input id="emp-name" placeholder="Employee name">
+                    <input id="emp-email" placeholder="employee@email.com" type="email">
+                    <button class="btn btn-primary btn-sm" onclick="createEmployee()">Add Employee</button>
+                </div>
+                <div id="emp-err" class="err hidden"></div>
+                <h4>Employees</h4>
+                <div id="emp-list"></div>
+            </div>
+        </div>
     </div>
 
     <div class="chat-area" id="chat-area">
         <div class="chat-area-empty" id="chat-empty">
             <h3>No chat selected</h3>
-            <p>Pick a conversation from the left, or share your link with customers.</p>
+            <p>Pick a conversation from the left.</p>
         </div>
         <div id="chat-active" style="display:none;flex-direction:column;height:100%">
             <div class="chat-header">
                 <div style="flex:1">
                     <div class="chat-header-name" id="chat-with"></div>
-                    <div class="chat-header-status" id="chat-status"></div>
+                    <div class="chat-header-agents" id="chat-agents-header"></div>
                 </div>
                 <span class="badge-sm" id="chat-pri-badge"></span>
                 <span class="badge-sm" id="chat-st-badge"></span>
@@ -262,30 +362,41 @@
 
 <script>
 const API = 'https://mfvollvrkc.execute-api.us-east-2.amazonaws.com/prod';
-const CHAT_PAGE_BASE = window.location.href.replace('index.html','').replace(/\/$/,'') + '/chat.html';
-let S = { token: localStorage.getItem('s8_token'), email: localStorage.getItem('s8_email'), chatCode: null, activeChat: null, pollTimer: null, chatPollTimer: null };
+const CHAT_PAGE_BASE = window.location.href.replace(/\/[^/]*$/,'') + '/chat.html';
+let S = {
+    token: localStorage.getItem('s8_token'),
+    email: localStorage.getItem('s8_email'),
+    role: localStorage.getItem('s8_role'),
+    chatCode: null, activeChat: null, pollTimer: null, chatPollTimer: null,
+    activePri: 'normal', activeSt: 'open', mustChangePw: false
+};
 
-window.addEventListener('DOMContentLoaded', () => { if (S.token && S.email) enterApp(); });
+window.addEventListener('DOMContentLoaded', () => {
+    if (S.token && S.email) enterApp();
+});
 
-function showView(v) {
-    document.getElementById('v-login').style.display = v==='login'?'flex':'none';
-    document.getElementById('v-signup').style.display = v==='signup'?'flex':'none';
-    document.getElementById('v-app').style.display = 'none';
+function showAuth(type) {
+    document.getElementById('auth-login').classList.toggle('hidden', type !== 'login');
+    document.getElementById('auth-signup').classList.toggle('hidden', type !== 'signup');
+}
+function hideAuth() {
+    document.getElementById('auth-login').classList.add('hidden');
+    document.getElementById('auth-signup').classList.add('hidden');
 }
 
-async function apiFetch(path, opts={}) {
-    const h = {'Content-Type':'application/json', ...opts.headers};
+async function apiFetch(path, opts = {}) {
+    const h = { 'Content-Type': 'application/json', ...opts.headers };
     if (S.token) h['Authorization'] = `Bearer ${S.token}`;
-    const r = await fetch(`${API}${path}`, {...opts, headers: h});
+    const r = await fetch(`${API}${path}`, { ...opts, headers: h });
     return r.json();
 }
 
-function showErr(id, msg) { const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
-function hideErr(id) { document.getElementById(id).style.display='none'; }
+function showErr(id, msg) { const e = document.getElementById(id); e.textContent = msg; e.classList.remove('hidden'); }
+function hideErr(id) { document.getElementById(id).classList.add('hidden'); }
 
 async function doSignup() {
     hideErr('signup-err');
-    const d = await apiFetch('/auth/signup', { method:'POST', body: JSON.stringify({
+    const d = await apiFetch('/auth/signup', { method: 'POST', body: JSON.stringify({
         email: document.getElementById('signup-email').value,
         password: document.getElementById('signup-pass').value,
         company_name: document.getElementById('signup-company').value
@@ -299,75 +410,162 @@ async function doSignup() {
 async function doLogin() {
     hideErr('login-err');
     const email = document.getElementById('login-email').value;
-    const d = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({
+    const d = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({
         email, password: document.getElementById('login-pass').value
     })});
     if (d.error) return showErr('login-err', d.error);
-    S.token = d.access_token; S.email = email;
+
+    S.token = d.access_token;
+    S.email = email;
+    S.role = d.role;
+    S.mustChangePw = d.must_change_password;
     localStorage.setItem('s8_token', d.access_token);
     localStorage.setItem('s8_email', email);
+    localStorage.setItem('s8_role', d.role);
+    hideAuth();
     enterApp();
 }
 
 function doLogout() {
-    S.token = null; S.email = null; S.activeChat = null;
-    localStorage.removeItem('s8_token'); localStorage.removeItem('s8_email');
+    if (S.activeChat) leaveChat(S.activeChat);
+    S.token = null; S.email = null; S.role = null; S.activeChat = null;
+    localStorage.removeItem('s8_token'); localStorage.removeItem('s8_email'); localStorage.removeItem('s8_role');
     clearInterval(S.pollTimer); clearInterval(S.chatPollTimer);
-    showView('login');
+    document.getElementById('v-app').classList.add('hidden');
+    document.getElementById('paywall').classList.add('hidden');
+    document.getElementById('pw-modal').classList.add('hidden');
+    document.getElementById('v-landing').classList.remove('hidden');
 }
 
 async function enterApp() {
-    document.getElementById('v-login').style.display = 'none';
-    document.getElementById('v-signup').style.display = 'none';
-    document.getElementById('app-email').textContent = S.email;
+    document.getElementById('v-landing').classList.add('hidden');
+    document.getElementById('auth-login').classList.add('hidden');
+    document.getElementById('auth-signup').classList.add('hidden');
 
     const [co, settings] = await Promise.all([apiFetch('/company'), apiFetch('/settings')]);
     if (co.error) { doLogout(); return; }
 
     S.chatCode = co.chat_code;
-    S.isAdmin = co.is_admin || false;
-    S.isPaid = co.paid || false;
+    S.role = co.role;
+    S.mustChangePw = co.must_change_password;
     const paywallOn = settings.paywall_enabled || false;
 
-    // Show admin toggle if admin
-    if (S.isAdmin) {
-        document.getElementById('admin-bar').style.display = 'flex';
+    // Admin toggle
+    if (S.role === 'admin') {
+        document.getElementById('admin-bar').classList.remove('hidden');
         document.getElementById('paywall-toggle').checked = paywallOn;
+        document.getElementById('tab-team').style.display = '';
+    } else {
+        document.getElementById('admin-bar').classList.add('hidden');
+        document.getElementById('tab-team').style.display = 'none';
     }
 
-    // Check paywall: admin always gets in, paid users get in, otherwise block
-    if (paywallOn && !S.isPaid && !S.isAdmin) {
-        document.getElementById('paywall').style.display = 'flex';
-        document.getElementById('v-app').style.display = 'none';
+    // Paywall check (admin always bypasses)
+    if (paywallOn && !co.paid && S.role !== 'admin') {
+        document.getElementById('paywall').classList.remove('hidden');
+        document.getElementById('v-app').classList.add('hidden');
         return;
     }
 
-    document.getElementById('paywall').style.display = 'none';
+    document.getElementById('paywall').classList.add('hidden');
+    document.getElementById('v-app').classList.remove('hidden');
     document.getElementById('v-app').style.display = 'grid';
+
+    document.getElementById('app-email').textContent = S.email;
+    document.getElementById('app-name').textContent = co.agent_name || S.email;
+    const roleBadge = document.getElementById('app-role');
+    roleBadge.textContent = S.role;
+    roleBadge.className = 'role-badge role-' + S.role;
+
     document.getElementById('share-link').value = `${CHAT_PAGE_BASE}?code=${co.chat_code}`;
+
+    // Must change password?
+    if (S.mustChangePw) {
+        document.getElementById('pw-modal').classList.remove('hidden');
+    }
 
     loadChats();
     S.pollTimer = setInterval(loadChats, 3000);
+}
+
+async function doChangePassword() {
+    hideErr('pw-err');
+    const newPw = document.getElementById('pw-new').value;
+    if (newPw !== document.getElementById('pw-confirm').value) return showErr('pw-err', 'Passwords do not match');
+    if (newPw.length < 6) return showErr('pw-err', 'Password must be at least 6 characters');
+
+    const d = await apiFetch('/auth/change-password', { method: 'POST', body: JSON.stringify({
+        old_password: document.getElementById('pw-old').value,
+        new_password: newPw,
+        access_token: S.token
+    })});
+    if (d.error) return showErr('pw-err', d.error);
+    S.mustChangePw = false;
+    document.getElementById('pw-modal').classList.add('hidden');
 }
 
 async function togglePaywall() {
     const cb = document.getElementById('paywall-toggle');
     const pw = prompt('Enter admin password to toggle paywall:');
     if (!pw) { cb.checked = !cb.checked; return; }
-    const d = await apiFetch('/admin/toggle-paywall', {
-        method: 'POST', body: JSON.stringify({ password: pw })
-    });
-    if (d.error) {
-        alert(d.error);
-        cb.checked = !cb.checked;
-    }
+    const d = await apiFetch('/admin/toggle-paywall', { method: 'POST', body: JSON.stringify({ password: pw }) });
+    if (d.error) { alert(d.error); cb.checked = !cb.checked; }
 }
 
+function switchTab(tab) {
+    document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('panel-chats').classList.toggle('hidden', tab !== 'chats');
+    document.getElementById('panel-team').classList.toggle('hidden', tab !== 'team');
+    if (tab === 'team') loadEmployees();
+}
+
+// ─── Employee management ───
+async function loadEmployees() {
+    const d = await apiFetch('/employees');
+    if (d.error) return;
+    const list = document.getElementById('emp-list');
+    if (!d.employees || !d.employees.length) {
+        list.innerHTML = '<div class="no-chats">No employees yet.</div>';
+        return;
+    }
+    list.innerHTML = d.employees.map(e => {
+        const pwBadge = e.must_change_password ? `<span class="pw-hint">pw: ${e.default_password}</span>` : '';
+        const activity = e.active_chat ? `<span class="emp-card-activity">Active on chat</span>` : '';
+        return `<div class="emp-card">
+            <div class="emp-card-top">
+                <div><div class="emp-card-name">${esc(e.name)}</div><div class="emp-card-email">${esc(e.email)}</div></div>
+                <button class="emp-delete" onclick="deleteEmployee('${esc(e.email)}')">Remove</button>
+            </div>
+            <div class="emp-card-meta">${pwBadge}${activity}</div>
+        </div>`;
+    }).join('');
+}
+
+async function createEmployee() {
+    hideErr('emp-err');
+    const name = document.getElementById('emp-name').value.trim();
+    const email = document.getElementById('emp-email').value.trim();
+    if (!name || !email) return showErr('emp-err', 'Name and email required');
+
+    const d = await apiFetch('/employees/create', { method: 'POST', body: JSON.stringify({ name, email }) });
+    if (d.error) return showErr('emp-err', d.error);
+    document.getElementById('emp-name').value = '';
+    document.getElementById('emp-email').value = '';
+    loadEmployees();
+}
+
+async function deleteEmployee(email) {
+    if (!confirm(`Remove ${email}?`)) return;
+    await apiFetch('/employees/delete', { method: 'POST', body: JSON.stringify({ email }) });
+    loadEmployees();
+}
+
+// ─── Chat list ───
 async function loadChats() {
     const d = await apiFetch('/chats');
     if (d.error) return;
     const list = document.getElementById('chat-list-items');
-    document.getElementById('chat-count').textContent = (d.chats||[]).length;
+    document.getElementById('chat-count').textContent = (d.chats || []).length;
 
     if (!d.chats || !d.chats.length) {
         list.innerHTML = '<div class="no-chats">No conversations yet.<br>Share your link to start chatting!</div>';
@@ -381,8 +579,15 @@ async function loadChats() {
         const pri = c.priority || 'normal';
         const st = c.status || 'open';
         const priBadge = pri !== 'normal' ? `<span class="badge-sm badge-${pri}">${pri}</span>` : '';
-        const stBadge = `<span class="badge-sm badge-${st}">${st.replace('_',' ')}</span>`;
-        const tktCode = c.ticket_code ? `<span style="font-family:monospace;font-size:11px;color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:4px">#${c.ticket_code}</span>` : '';
+        const stBadge = `<span class="badge-sm badge-${st}">${st.replace('_', ' ')}</span>`;
+        const tktCode = c.ticket_code ? `<span style="font-family:monospace;font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 5px;border-radius:4px">#${c.ticket_code}</span>` : '';
+
+        let agentsHtml = '';
+        const agents = c.active_agents || [];
+        if (agents.length > 0) {
+            agentsHtml = `<div class="agents-online">${agents.map(a => `<span class="agent-dot">${esc(a.split('@')[0])}</span>`).join('')}</div>`;
+        }
+
         return `<div class="chat-item${active}" onclick="openChat('${c.customer_id}','${esc(c.customer_name)}','${pri}','${st}')">
             <div class="chat-item-top">
                 <span class="chat-name">${esc(c.customer_name)}${dot} ${tktCode}</span>
@@ -392,25 +597,36 @@ async function loadChats() {
                 <div class="chat-preview" style="flex:1">${esc(c.last_message)}</div>
                 <div style="display:flex;gap:4px;margin-left:8px;flex-shrink:0">${priBadge}${stBadge}</div>
             </div>
+            ${agentsHtml}
         </div>`;
     }).join('');
 }
 
 async function openChat(customerId, name, pri, st) {
+    if (S.activeChat && S.activeChat !== customerId) {
+        leaveChat(S.activeChat);
+    }
+
     S.activeChat = customerId;
     S.activePri = pri || 'normal';
     S.activeSt = st || 'open';
     document.getElementById('chat-empty').style.display = 'none';
     document.getElementById('chat-active').style.display = 'flex';
     document.getElementById('chat-with').textContent = name;
-    document.getElementById('chat-status').textContent = 'Customer';
     document.getElementById('compose-input').focus();
     updateControlButtons();
+
+    await apiFetch('/chat/join', { method: 'POST', body: JSON.stringify({ customer_id: customerId }) });
 
     clearInterval(S.chatPollTimer);
     await loadMessages();
     S.chatPollTimer = setInterval(loadMessages, 2000);
     loadChats();
+}
+
+function leaveChat(customerId) {
+    if (!customerId) return;
+    apiFetch('/chat/leave', { method: 'POST', body: JSON.stringify({ customer_id: customerId }) });
 }
 
 function updateControlButtons() {
@@ -431,9 +647,7 @@ function updateControlButtons() {
 
 async function setPriority(pri) {
     if (!S.activeChat || pri === S.activePri) return;
-    await apiFetch('/chat/update', { method:'POST', body: JSON.stringify({
-        customer_id: S.activeChat, priority: pri
-    })});
+    await apiFetch('/chat/update', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, priority: pri }) });
     S.activePri = pri;
     updateControlButtons();
     await loadMessages();
@@ -442,12 +656,9 @@ async function setPriority(pri) {
 
 async function setStatus(st) {
     if (!S.activeChat || st === S.activeSt) return;
-
     if (st === 'closed' && !confirm('Close and delete this ticket? This cannot be undone.')) return;
 
-    await apiFetch('/chat/update', { method:'POST', body: JSON.stringify({
-        customer_id: S.activeChat, status: st
-    })});
+    await apiFetch('/chat/update', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, status: st }) });
 
     if (st === 'closed') {
         S.activeChat = null;
@@ -457,7 +668,6 @@ async function setStatus(st) {
         loadChats();
         return;
     }
-
     S.activeSt = st;
     updateControlButtons();
     await loadMessages();
@@ -472,12 +682,13 @@ async function loadMessages() {
     const wrap = document.getElementById('messages-wrap');
     const wasAtBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 60;
 
-    wrap.innerHTML = (d.messages||[]).map(m => {
+    wrap.innerHTML = (d.messages || []).map(m => {
         const cls = m.sender === 'company' ? 'msg-company' : m.sender === 'system' ? 'msg-system' : 'msg-customer';
-        const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         if (m.sender === 'system') return `<div class="msg ${cls}">${esc(m.message)}</div>`;
+        const nameTag = m.sender === 'company' ? `<div class="msg-sender-tag">${esc(m.sender_name)}</div>` : '';
         return `<div class="msg ${cls}">
-            ${esc(m.message)}
+            ${nameTag}${esc(m.message)}
             <div class="msg-meta">${time}</div>
         </div>`;
     }).join('');
@@ -490,10 +701,7 @@ async function sendCompanyMsg() {
     const msg = input.value.trim();
     if (!msg || !S.activeChat) return;
     input.value = '';
-
-    await apiFetch('/chat/send', { method:'POST', body: JSON.stringify({
-        customer_id: S.activeChat, message: msg
-    })});
+    await apiFetch('/chat/send', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, message: msg }) });
     await loadMessages();
     loadChats();
 }
@@ -509,12 +717,12 @@ function copyLink() {
 function timeAgo(ms) {
     const s = Math.floor((Date.now() - ms) / 1000);
     if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s/60) + 'm ago';
-    if (s < 86400) return Math.floor(s/3600) + 'h ago';
-    return Math.floor(s/86400) + 'd ago';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
 }
 
-function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
 </body>
 </html>
