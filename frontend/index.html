@@ -436,7 +436,19 @@ async function apiFetch(path, opts = {}) {
     const h = { 'Content-Type': 'application/json', ...opts.headers };
     if (S.token) h['Authorization'] = `Bearer ${S.token}`;
     const r = await fetch(`${API}${path}`, { ...opts, headers: h });
-    return r.json();
+    const d = await r.json();
+    d._status = r.status;
+    return d;
+}
+
+function handleGoneChat() {
+    alert('This chat no longer exists. Refreshing list.');
+    S.activeChat = null;
+    clearInterval(S.chatPollTimer);
+    document.getElementById('chat-active').style.display = 'none';
+    document.getElementById('chat-empty').style.display = 'flex';
+    document.getElementById('v-app').classList.remove('mobile-chat-open');
+    loadChats();
 }
 
 function showErr(id, msg) { const e = document.getElementById(id); e.textContent = msg; e.classList.remove('hidden'); }
@@ -617,9 +629,10 @@ async function loadChats() {
     const d = await apiFetch('/chats');
     if (d.error) return;
     const list = document.getElementById('chat-list-items');
-    document.getElementById('chat-count').textContent = (d.chats || []).length;
+    d.chats = (d.chats || []).filter(c => c.customer_id && c.customer_name);
+    document.getElementById('chat-count').textContent = d.chats.length;
 
-    if (!d.chats || !d.chats.length) {
+    if (!d.chats.length) {
         list.innerHTML = '<div class="no-chats">No conversations yet.<br>Share your link to start chatting!</div>';
         return;
     }
@@ -669,7 +682,8 @@ async function openChat(customerId, name, pri, st) {
     document.getElementById('compose-input').focus();
     updateControlButtons();
 
-    await apiFetch('/chat/join', { method: 'POST', body: JSON.stringify({ customer_id: customerId }) });
+    const jr = await apiFetch('/chat/join', { method: 'POST', body: JSON.stringify({ customer_id: customerId }) });
+    if (jr._status === 404 || jr._status === 410) { handleGoneChat(); return; }
 
     clearInterval(S.chatPollTimer);
     await loadMessages();
@@ -700,7 +714,8 @@ function updateControlButtons() {
 
 async function setPriority(pri) {
     if (!S.activeChat || pri === S.activePri) return;
-    await apiFetch('/chat/update', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, priority: pri }) });
+    const ur = await apiFetch('/chat/update', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, priority: pri }) });
+    if (ur._status === 410) { handleGoneChat(); return; }
     S.activePri = pri;
     updateControlButtons();
     await loadMessages();
@@ -711,7 +726,8 @@ async function setStatus(st) {
     if (!S.activeChat || st === S.activeSt) return;
     if (st === 'closed' && !confirm('Close and delete this ticket? This cannot be undone.')) return;
 
-    await apiFetch('/chat/update', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, status: st }) });
+    const ur = await apiFetch('/chat/update', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, status: st }) });
+    if (ur._status === 410) { handleGoneChat(); return; }
 
     if (st === 'closed') {
         S.activeChat = null;
@@ -755,7 +771,8 @@ async function sendCompanyMsg() {
     const msg = input.value.trim();
     if (!msg || !S.activeChat) return;
     input.value = '';
-    await apiFetch('/chat/send', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, message: msg }) });
+    const sr = await apiFetch('/chat/send', { method: 'POST', body: JSON.stringify({ customer_id: S.activeChat, message: msg }) });
+    if (sr._status === 410) { handleGoneChat(); return; }
     await loadMessages();
     loadChats();
 }

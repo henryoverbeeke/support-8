@@ -396,6 +396,11 @@ def handle_get_chats(auth):
     )
     chats = []
     for item in r.get('Items', []):
+        # Auto-clean ghost entries (no customer_id means it was a phantom create)
+        if not item.get('customer_id'):
+            table.delete_item(Key={'pk': item['pk'], 'sk': item['sk']})
+            continue
+
         agents = item.get('active_agents', {})
         if isinstance(agents, set):
             agents = list(agents)
@@ -419,6 +424,16 @@ def handle_get_chats(auth):
     return resp(200, {'chats': chats})
 
 
+def handle_force_delete_chat(auth, body):
+    """Force-delete a ghost or stuck chat session."""
+    cid = auth['company_id']
+    customer_id = body.get('customer_id', '')
+    if not customer_id:
+        return resp(400, {'error': 'customer_id required'})
+    delete_chat(cid, customer_id)
+    return resp(200, {'deleted': customer_id})
+
+
 def handle_join_chat(auth, body):
     cid = auth['company_id']
     customer_id = body.get('customer_id', '')
@@ -428,15 +443,17 @@ def handle_join_chat(auth, body):
     agent_name = auth.get('agent_name', auth['email'])
     agent_email = auth['email']
 
-    # Add to active_agents map on the session
-    table.update_item(
-        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-        UpdateExpression='SET active_agents.#ae = :an',
-        ExpressionAttributeNames={'#ae': agent_email},
-        ExpressionAttributeValues={':an': agent_name}
-    )
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET active_agents.#ae = :an',
+            ExpressionAttributeNames={'#ae': agent_email},
+            ExpressionAttributeValues={':an': agent_name},
+            ConditionExpression='attribute_exists(customer_id)'
+        )
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        return resp(404, {'error': 'Chat not found'})
 
-    # Track on employee record
     if auth['role'] == 'employee':
         table.update_item(
             Key={'pk': f'COMPANY#{cid}', 'sk': f'EMPLOYEE#{agent_email}'},
@@ -459,7 +476,8 @@ def handle_leave_chat(auth, body):
         table.update_item(
             Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
             UpdateExpression='REMOVE active_agents.#ae',
-            ExpressionAttributeNames={'#ae': agent_email}
+            ExpressionAttributeNames={'#ae': agent_email},
+            ConditionExpression='attribute_exists(customer_id)'
         )
     except Exception:
         pass
@@ -480,11 +498,15 @@ def handle_get_chat_messages(auth, params):
     if not customer_id:
         return resp(400, {'error': 'customer_id required'})
 
-    table.update_item(
-        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-        UpdateExpression='SET unread = :z',
-        ExpressionAttributeValues={':z': 0}
-    )
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET unread = :z',
+            ExpressionAttributeValues={':z': 0},
+            ConditionExpression='attribute_exists(customer_id)'
+        )
+    except Exception:
+        pass
 
     r = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :prefix)',
@@ -509,6 +531,11 @@ def handle_company_send(auth, body):
     if not customer_id or not message:
         return resp(400, {'error': 'customer_id and message required'})
 
+    # Verify session exists before sending
+    session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
+    if 'Item' not in session or not session['Item'].get('customer_id'):
+        return resp(410, {'error': 'This chat no longer exists'})
+
     sender_name = auth.get('agent_name', auth['email'])
     ts = int(time.time() * 1000)
     msg_id = str(uuid.uuid4())
@@ -519,11 +546,15 @@ def handle_company_send(auth, body):
         'message': message, 'created_at': ts
     })
 
-    table.update_item(
-        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-        UpdateExpression='SET last_message = :m, last_sender = :s, updated_at = :t',
-        ExpressionAttributeValues={':m': message, ':s': 'company', ':t': ts}
-    )
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET last_message = :m, last_sender = :s, updated_at = :t',
+            ExpressionAttributeValues={':m': message, ':s': 'company', ':t': ts},
+            ConditionExpression='attribute_exists(customer_id)'
+        )
+    except Exception:
+        pass
 
     return resp(200, {'status': 'sent', 'created_at': ts})
 
@@ -583,12 +614,16 @@ def handle_update_chat(auth, body):
     update_parts.append('updated_at = :t')
     values[':t'] = ts
 
-    table.update_item(
-        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-        UpdateExpression='SET ' + ', '.join(update_parts),
-        ExpressionAttributeValues=values,
-        ExpressionAttributeNames=names if names else None
-    )
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET ' + ', '.join(update_parts),
+            ExpressionAttributeValues=values,
+            ExpressionAttributeNames=names if names else None,
+            ConditionExpression='attribute_exists(customer_id)'
+        )
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        return resp(410, {'error': 'This chat no longer exists'})
 
     agent_name = auth.get('agent_name', auth['email'])
     parts = []
@@ -605,11 +640,15 @@ def handle_update_chat(auth, body):
         'message': sys_msg, 'created_at': ts
     })
 
-    table.update_item(
-        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-        UpdateExpression='SET last_message = :m, last_sender = :s',
-        ExpressionAttributeValues={':m': sys_msg, ':s': 'system'}
-    )
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET last_message = :m, last_sender = :s',
+            ExpressionAttributeValues={':m': sys_msg, ':s': 'system'},
+            ConditionExpression='attribute_exists(customer_id)'
+        )
+    except Exception:
+        pass
 
     return resp(200, {'status': 'updated', 'message': sys_msg})
 
@@ -727,11 +766,15 @@ def handle_public_send(body):
         'message': message, 'created_at': ts
     })
 
-    table.update_item(
-        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-        UpdateExpression='SET last_message = :m, last_sender = :s, updated_at = :t, unread = unread + :one',
-        ExpressionAttributeValues={':m': message, ':s': 'customer', ':t': ts, ':one': 1}
-    )
+    try:
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET last_message = :m, last_sender = :s, updated_at = :t, unread = unread + :one',
+            ExpressionAttributeValues={':m': message, ':s': 'customer', ':t': ts, ':one': 1},
+            ConditionExpression='attribute_exists(customer_id)'
+        )
+    except Exception:
+        pass
 
     return resp(200, {'status': 'sent', 'created_at': ts})
 
@@ -861,6 +904,8 @@ def lambda_handler(event, context):
         return handle_join_chat(auth, body)
     if path == '/chat/leave' and method == 'POST':
         return handle_leave_chat(auth, body)
+    if path == '/chat/force-delete' and method == 'POST':
+        return handle_force_delete_chat(auth, body)
     if path == '/auth/change-password' and method == 'POST':
         return handle_change_password(auth, body)
     if path == '/admin/toggle-paywall' and method == 'POST':
