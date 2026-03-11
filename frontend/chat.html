@@ -3,80 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Chat</title>
+    <title>Support8 — Chat</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root { --bg: #f8fafc; --surface: #fff; --border: #e2e8f0; --primary: #6366f1; --primary-hover: #818cf8; --text: #1e293b; --muted: #64748b; --light: #f1f5f9; --danger: #ef4444; --success: #22c55e; }
+        :root { --bg: #f6f9fc; --surface: #fff; --border: #e3e8ee; --primary: #635bff; --primary-hover: #7a73ff; --text: #1a1f36; --muted: #697386; --light: #f0f3f7; --danger: #df1b41; --success: #30b130; }
         html { height: 100%; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; -webkit-text-size-adjust: 100%; }
 
-        .chat-container { width: 100%; max-width: 480px; height: 100vh; max-height: 700px; background: var(--surface); border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,.08); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
+        .chat-container { width: 100%; max-width: 480px; height: 100vh; max-height: 720px; background: var(--surface); border-radius: 16px; box-shadow: 0 12px 50px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.04); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
 
-        .chat-header { padding: 16px 20px; background: var(--primary); color: white; flex-shrink: 0; }
+        .chat-header { padding: 18px 22px; background: linear-gradient(135deg, #0a2540 0%, #1a3a5c 100%); color: white; flex-shrink: 0; }
         .chat-header h2 { font-size: 17px; font-weight: 700; }
-        .chat-header p { font-size: 13px; opacity: .8; margin-top: 2px; }
+        .chat-header p { font-size: 12px; opacity: .6; margin-top: 2px; }
         .chat-header p:empty { display: none; }
-        .header-badges { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
-        .header-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; }
+        .header-badges { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .header-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: .3px; }
 
         /* Landing */
-        .landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; text-align: center; overflow-y: auto; }
-        .landing h2 { font-size: 22px; margin-bottom: 6px; }
-        .landing > p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
-        .landing-section { width: 100%; max-width: 300px; margin-bottom: 20px; }
-        .landing-section h3 { font-size: 14px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
-        .landing-section input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); font-size: 16px; outline: none; text-align: center; margin-bottom: 10px; -webkit-appearance: none; }
-        .landing-section input:focus { border-color: var(--primary); }
-        .land-btn { width: 100%; padding: 14px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; -webkit-appearance: none; }
-        .land-btn-primary { background: var(--primary); color: white; }
+        .landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 36px 24px; text-align: center; overflow-y: auto; }
+        .landing h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; color: #1a1f36; }
+        .landing > p { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.5; }
+        .landing-section { width: 100%; max-width: 320px; margin-bottom: 20px; }
+        .landing-section h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .8px; font-weight: 700; }
+        .landing-section input { width: 100%; padding: 13px 16px; border-radius: 10px; border: 1px solid var(--border); font-size: 16px; outline: none; text-align: center; margin-bottom: 10px; -webkit-appearance: none; transition: border-color .15s, box-shadow .15s; color: var(--text); }
+        .landing-section input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,91,255,.1); }
+        .landing-section input::placeholder { color: #a3acb9; }
+        .land-btn { width: 100%; padding: 14px; border-radius: 24px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; -webkit-appearance: none; transition: .15s; }
+        .land-btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 12px rgba(99,91,255,.25); }
         .land-btn-primary:hover { background: var(--primary-hover); }
-        .land-btn-secondary { background: var(--light); color: var(--text); border: 1px solid var(--border); }
-        .land-btn-secondary:hover { background: var(--border); }
-        .divider { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 300px; margin: 4px 0 20px; color: var(--muted); font-size: 12px; }
+        .land-btn-primary:active { transform: scale(.98); }
+        .land-btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+        .land-btn-secondary:hover { background: var(--light); }
+        .divider { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 320px; margin: 4px 0 20px; color: var(--muted); font-size: 12px; font-weight: 600; }
         .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-        .land-err { color: var(--danger); font-size: 13px; margin-bottom: 8px; display: none; }
+        .land-err { color: var(--danger); font-size: 13px; margin-bottom: 10px; display: none; font-weight: 500; }
 
         /* Ticket code display */
-        .ticket-banner { background: var(--light); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 10px 12px 0; text-align: center; flex-shrink: 0; }
-        .ticket-banner label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
-        .ticket-code-display { font-size: 28px; font-weight: 800; letter-spacing: 6px; color: var(--primary); font-family: 'SF Mono', monospace; margin: 4px 0; }
+        .ticket-banner { background: var(--light); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin: 12px 14px 0; text-align: center; flex-shrink: 0; }
+        .ticket-banner label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 700; }
+        .ticket-code-display { font-size: 28px; font-weight: 800; letter-spacing: 6px; color: var(--primary); font-family: 'SF Mono', monospace; margin: 6px 0; }
         .ticket-banner p { font-size: 12px; color: var(--muted); }
 
         /* Messages */
-        .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; -webkit-overflow-scrolling: touch; }
-        .msg { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; }
-        .msg-customer { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg-company { background: var(--light); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.55; word-wrap: break-word; overflow-wrap: break-word; }
+        .msg-customer { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 6px; box-shadow: 0 2px 8px rgba(99,91,255,.15); }
+        .msg-company { background: var(--light); color: var(--text); align-self: flex-start; border-bottom-left-radius: 6px; border: 1px solid var(--border); }
         .msg-system { align-self: center; font-size: 12px; color: var(--muted); padding: 4px; }
-        .msg-meta { font-size: 11px; margin-top: 3px; opacity: .6; }
+        .msg-meta { font-size: 11px; margin-top: 4px; opacity: .55; }
 
-        .compose { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; background: var(--surface); flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        .compose input { flex: 1; padding: 11px 14px; border-radius: 24px; border: 1px solid var(--border); font-size: 16px; outline: none; background: var(--light); -webkit-appearance: none; min-width: 0; }
-        .compose input:focus { border-color: var(--primary); background: #fff; }
-        .compose button { padding: 10px 16px; border-radius: 24px; border: none; background: var(--primary); color: white; font-size: 14px; font-weight: 600; cursor: pointer; flex-shrink: 0; -webkit-appearance: none; }
+        .compose { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: var(--surface); flex-shrink: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+        .compose input { flex: 1; padding: 12px 16px; border-radius: 24px; border: 1px solid var(--border); font-size: 16px; outline: none; background: var(--light); -webkit-appearance: none; min-width: 0; transition: .15s; color: var(--text); }
+        .compose input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(99,91,255,.1); }
+        .compose input::placeholder { color: #a3acb9; }
+        .compose button { padding: 12px 20px; border-radius: 24px; border: none; background: var(--primary); color: white; font-size: 14px; font-weight: 600; cursor: pointer; flex-shrink: 0; -webkit-appearance: none; transition: .15s; }
         .compose button:hover { background: var(--primary-hover); }
         .compose button:active { background: var(--primary-hover); transform: scale(.97); }
 
         /* Closed overlay */
-        .closed-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
-        .closed-overlay h2 { margin-bottom: 8px; }
-        .closed-overlay p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+        .closed-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+        .closed-overlay h2 { margin-bottom: 8px; font-size: 22px; font-weight: 800; }
+        .closed-overlay p { color: var(--muted); font-size: 15px; margin-bottom: 24px; line-height: 1.5; }
 
+        .eta-banner { background: #fef6e7; border: 1px solid rgba(194,120,3,.15); border-radius: 12px; padding: 12px 16px; margin: 10px 14px 0; text-align: center; flex-shrink: 0; }
+        .eta-banner span { font-size: 13px; font-weight: 600; color: #c27803; }
         .hidden { display: none !important; }
 
-        /* Ticket code input */
         .code-input { font-size: 24px !important; letter-spacing: 8px; font-weight: 700; font-family: 'SF Mono', monospace; }
 
-        /* ── Mobile ── */
         @media (max-width: 520px) {
             body { align-items: stretch; }
             .chat-container { max-height: none; height: 100%; border-radius: 0; border: none; box-shadow: none; }
-            .chat-header { padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); }
-            .landing { padding: 20px 16px; }
-            .landing h2 { font-size: 20px; }
+            .chat-header { padding: 16px 18px; padding-top: max(16px, env(safe-area-inset-top)); }
+            .landing { padding: 24px 18px; }
+            .landing h2 { font-size: 22px; }
             .landing-section { max-width: 100%; }
             .ticket-code-display { font-size: 24px; letter-spacing: 5px; }
-            .messages { padding: 10px; }
+            .messages { padding: 12px; }
             .msg { max-width: 88%; font-size: 15px; }
         }
 
@@ -92,28 +95,28 @@
 
 <div class="chat-container">
     <div class="chat-header">
-        <h2 id="header-name">Support Chat</h2>
-        <p id="header-sub"></p>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
+            <svg width="24" height="24" viewBox="0 0 36 36" fill="none"><rect x="2" y="2" width="32" height="32" rx="8" fill="rgba(255,255,255,.15)"/><path d="M11 13a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 2.5V23a2 2 0 01-2-2v-8z" fill="#fff" opacity=".9"/></svg>
+            <h2 id="header-name">Support Chat</h2>
+        </div>
+        <p id="header-sub" style="font-size:11px;opacity:.6"></p>
         <div class="header-badges hidden" id="header-badges">
             <span class="header-badge" id="h-pri"></span>
             <span class="header-badge" id="h-st"></span>
+            <span class="header-badge hidden" id="h-eta" style="background:rgba(194,120,3,.2);color:#c27803"></span>
         </div>
     </div>
 
-    <!-- Landing: new chat or enter code -->
     <div class="landing" id="v-landing">
         <h2>How can we help?</h2>
         <p>Start a new conversation or check on an existing ticket.</p>
         <div class="land-err" id="land-err"></div>
-
         <div class="landing-section">
             <h3>New Chat</h3>
             <input id="name-input" placeholder="Your name" onkeydown="if(event.key==='Enter')startChat()">
             <button class="land-btn land-btn-primary" onclick="startChat()">Start Chat</button>
         </div>
-
         <div class="divider">OR</div>
-
         <div class="landing-section">
             <h3>Have a ticket code?</h3>
             <input id="code-input" class="code-input" placeholder="0000" maxlength="5" onkeydown="if(event.key==='Enter')lookupTicket()">
@@ -121,25 +124,24 @@
         </div>
     </div>
 
-    <!-- Ticket code reveal after starting -->
     <div class="ticket-banner hidden" id="ticket-banner">
         <label>Your Ticket Code</label>
         <div class="ticket-code-display" id="ticket-code-show"></div>
         <p>Save this code to check back on your ticket later</p>
     </div>
 
-    <!-- Chat view -->
+    <div class="eta-banner hidden" id="eta-banner"><span id="eta-text"></span></div>
+
     <div class="messages hidden" id="messages"></div>
     <div class="compose hidden" id="compose">
         <input id="msg-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMsg()">
         <button onclick="sendMsg()">Send</button>
     </div>
 
-    <!-- Closed state -->
     <div class="closed-overlay hidden" id="v-closed">
         <h2>Ticket Closed</h2>
         <p>This ticket has been resolved and closed. Start a new chat if you need more help.</p>
-        <button class="land-btn land-btn-primary" style="max-width:200px" onclick="backToLanding()">New Chat</button>
+        <button class="land-btn land-btn-primary" style="max-width:220px" onclick="backToLanding()">New Chat</button>
     </div>
 </div>
 
@@ -253,14 +255,30 @@ async function loadMessages() {
     if (d.session) {
         const badges = document.getElementById('header-badges');
         badges.classList.remove('hidden');
-        const priColors = {urgent:'#ef4444',high:'#f59e0b',normal:'#6366f1',low:'#22c55e'};
-        const stColors = {open:'#22c55e',in_progress:'#6366f1',waiting:'#f59e0b',resolved:'#22c55e',closed:'#64748b'};
+        const priColors = {urgent:'#df1b41',high:'#c27803',normal:'#635bff',low:'#30b130'};
+        const stColors = {open:'#30b130',in_progress:'#635bff',waiting:'#c27803',resolved:'#30b130',closed:'#697386'};
         const pri = d.session.priority || 'normal';
         const st = d.session.status || 'open';
         const hp = document.getElementById('h-pri');
-        hp.textContent = pri; hp.style.background = (priColors[pri]||'#6366f1')+'22'; hp.style.color = priColors[pri]||'#6366f1';
+        hp.textContent = pri; hp.style.background = (priColors[pri]||'#635bff')+'18'; hp.style.color = priColors[pri]||'#635bff';
         const hs = document.getElementById('h-st');
-        hs.textContent = st.replace('_',' '); hs.style.background = (stColors[st]||'#6366f1')+'22'; hs.style.color = stColors[st]||'#6366f1';
+        hs.textContent = st.replace('_',' '); hs.style.background = (stColors[st]||'#635bff')+'18'; hs.style.color = stColors[st]||'#635bff';
+
+        const etaT = d.session.eta_target || 0;
+        const etaBanner = document.getElementById('eta-banner');
+        const hEta = document.getElementById('h-eta');
+        if (etaT > Date.now()) {
+            const diff = Math.ceil((etaT - Date.now()) / 60000);
+            let etaStr;
+            if (diff >= 60) { const h = Math.floor(diff/60); const m = diff%60; etaStr = m ? `${h}h ${m}m` : `${h}h`; }
+            else { etaStr = `${diff} min`; }
+            etaBanner.classList.remove('hidden');
+            document.getElementById('eta-text').textContent = `Estimated response time: ${etaStr}`;
+            hEta.textContent = `ETA ${etaStr}`; hEta.classList.remove('hidden');
+        } else {
+            etaBanner.classList.add('hidden');
+            hEta.classList.add('hidden');
+        }
     }
 
     const wrap = document.getElementById('messages');
@@ -276,7 +294,7 @@ async function loadMessages() {
         if (m.sender === 'system') return `<div class="msg ${cls}">${esc(m.message)}</div>`;
         const label = m.sender === 'company' ? m.sender_name || companyName : '';
         return `<div class="msg ${cls}">
-            ${m.sender === 'company' ? `<div style="font-size:12px;font-weight:600;margin-bottom:3px;opacity:.7">${esc(label)}</div>` : ''}
+            ${m.sender === 'company' ? `<div style="font-size:12px;font-weight:600;margin-bottom:3px;opacity:.6">${esc(label)}</div>` : ''}
             ${esc(m.message)}
             <div class="msg-meta">${time}</div>
         </div>`;
@@ -306,13 +324,14 @@ async function sendMsg() {
 }
 
 function backToLanding() {
-    hide('v-closed'); hide('messages'); hide('compose'); hide('ticket-banner'); hide('header-badges');
+    hide('v-closed'); hide('messages'); hide('compose'); hide('ticket-banner'); hide('header-badges'); hide('eta-banner');
     show('v-landing');
     customerId = null; customerName = ''; ticketCode = ''; lastMsgCount = 0;
     chatCode = CODE;
     document.getElementById('name-input').value = '';
     document.getElementById('code-input').value = '';
     document.getElementById('header-name').textContent = 'Support Chat';
+    document.getElementById('header-sub').textContent = '';
 }
 
 function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
