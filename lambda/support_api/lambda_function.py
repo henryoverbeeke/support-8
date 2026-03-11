@@ -418,7 +418,8 @@ def handle_get_chats(auth):
             'active_agents': agents,
             'updated_at': int(item.get('updated_at', 0)),
             'created_at': int(item.get('created_at', 0)),
-            'unread': item.get('unread', 0)
+            'unread': item.get('unread', 0),
+            'eta_target': int(item.get('eta_target', 0))
         })
     chats.sort(key=lambda c: c['updated_at'], reverse=True)
     return resp(200, {'chats': chats})
@@ -588,9 +589,10 @@ def handle_update_chat(auth, body):
 
     priority = body.get('priority')
     status = body.get('status')
+    eta_minutes = body.get('eta_minutes')
 
-    if not priority and not status:
-        return resp(400, {'error': 'Provide priority or status to update'})
+    if not priority and not status and eta_minutes is None:
+        return resp(400, {'error': 'Provide priority, status, or eta_minutes to update'})
 
     if status == 'closed':
         delete_chat(cid, customer_id)
@@ -610,18 +612,30 @@ def handle_update_chat(auth, body):
         values[':st'] = status
         names['#st'] = 'status'
 
+    if eta_minutes is not None:
+        eta_val = int(eta_minutes) if eta_minutes else 0
+        if eta_val > 0:
+            eta_target = int(time.time() * 1000) + (eta_val * 60 * 1000)
+            update_parts.append('eta_target = :eta')
+            values[':eta'] = eta_target
+        else:
+            update_parts.append('eta_target = :eta')
+            values[':eta'] = 0
+
     ts = int(time.time() * 1000)
     update_parts.append('updated_at = :t')
     values[':t'] = ts
 
     try:
-        table.update_item(
-            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
-            UpdateExpression='SET ' + ', '.join(update_parts),
-            ExpressionAttributeValues=values,
-            ExpressionAttributeNames=names if names else None,
-            ConditionExpression='attribute_exists(customer_id)'
-        )
+        update_kwargs = {
+            'Key': {'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            'UpdateExpression': 'SET ' + ', '.join(update_parts),
+            'ExpressionAttributeValues': values,
+            'ConditionExpression': 'attribute_exists(customer_id)'
+        }
+        if names:
+            update_kwargs['ExpressionAttributeNames'] = names
+        table.update_item(**update_kwargs)
     except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
         return resp(410, {'error': 'This chat no longer exists'})
 
@@ -631,6 +645,18 @@ def handle_update_chat(auth, body):
         parts.append(f'priority to {priority.upper()}')
     if status:
         parts.append(f'status to {status.replace("_", " ").title()}')
+    if eta_minutes is not None:
+        eta_val = int(eta_minutes) if eta_minutes else 0
+        if eta_val > 0:
+            if eta_val >= 60:
+                h = eta_val // 60
+                m = eta_val % 60
+                eta_str = f'{h}h {m}m' if m else f'{h}h'
+            else:
+                eta_str = f'{eta_val}m'
+            parts.append(f'estimated response time to {eta_str}')
+        else:
+            parts.append('cleared the estimated response time')
     sys_msg = f'{agent_name} updated {" and ".join(parts)}'
 
     msg_id = str(uuid.uuid4())
@@ -800,7 +826,8 @@ def handle_public_messages(params):
     session_info = {
         'priority': si.get('priority', 'normal'),
         'status': si.get('status', 'open'),
-        'ticket_code': si.get('ticket_code', '')
+        'ticket_code': si.get('ticket_code', ''),
+        'eta_target': int(si.get('eta_target', 0))
     }
 
     r = table.query(
