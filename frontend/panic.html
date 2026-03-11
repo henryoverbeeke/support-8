@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0f;color:#c0c0c0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+        .denied{text-align:center;color:#333;font-size:14px}
+        .card{background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:32px;max-width:400px;width:90%}
+        .card h2{font-size:15px;font-weight:600;color:#888;margin-bottom:16px;letter-spacing:.5px;text-transform:uppercase}
+        .field{margin-bottom:12px}
+        .field input{width:100%;padding:10px 12px;border-radius:6px;border:1px solid #222;background:#0a0a0f;color:#c0c0c0;font-size:14px;outline:none;font-family:monospace}
+        .field input:focus{border-color:#333}
+        .field input::placeholder{color:#333}
+        .btn{padding:10px 20px;border-radius:6px;border:1px solid #222;background:#111;color:#666;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;width:100%}
+        .btn:hover{border-color:#333;color:#999}
+        .btn-danger{border-color:#3a1111;color:#a33;background:#1a0808}
+        .btn-danger:hover{border-color:#522;color:#d44}
+        .msg{font-size:13px;padding:8px 12px;border-radius:6px;margin-bottom:12px}
+        .msg-err{background:#1a0808;border:1px solid #3a1111;color:#d44}
+        .msg-ok{background:#081a08;border:1px solid #113a11;color:#4d4}
+        .msg-warn{background:#1a1808;border:1px solid #3a3011;color:#da4}
+        .blank-btn{width:60px;height:36px;border:1px solid #1a1a1a;background:#0a0a0f;border-radius:6px;cursor:pointer;transition:.15s}
+        .blank-btn:hover{border-color:#333}
+        .blank-btn:active{background:#111}
+        .hidden{display:none!important}
+        .step{margin-top:16px}
+        .status-line{font-size:12px;color:#444;margin-top:8px;font-family:monospace}
+    </style>
+</head>
+<body>
+
+<div id="denied" class="denied hidden">Access restricted.</div>
+
+<div id="main" class="card hidden">
+    <h2>System Access</h2>
+    <div id="msg" class="hidden"></div>
+
+    <!-- Step 1: Email -->
+    <div id="step-email">
+        <div class="field"><input id="email-input" type="email" placeholder="email" autocomplete="off" onkeydown="if(event.key==='Enter')checkEmail()"></div>
+        <button class="btn" onclick="checkEmail()">Continue</button>
+    </div>
+
+    <!-- Step 2: Confirm removal -->
+    <div id="step-confirm" class="hidden">
+        <p style="font-size:14px;color:#888;margin-bottom:12px">Are you sure you want to remove all dependencies?</p>
+        <div class="field"><input id="confirm-input" placeholder="type yes to confirm" autocomplete="off" onkeydown="if(event.key==='Enter')confirmRemoval()"></div>
+        <button class="btn btn-danger" onclick="confirmRemoval()">Confirm</button>
+    </div>
+
+    <!-- Step 3: Password verification -->
+    <div id="step-password" class="hidden">
+        <p style="font-size:13px;color:#666;margin-bottom:12px">Enter confirmation password</p>
+        <div class="field"><input id="pw-input" type="password" placeholder="password" autocomplete="off" onkeydown="if(event.key==='Enter')verifyPassword()"></div>
+        <button class="btn btn-danger" onclick="verifyPassword()">Verify</button>
+    </div>
+
+    <!-- Step 4: EC2 stopped, blank button -->
+    <div id="step-actions" class="hidden">
+        <div class="status-line" id="ec2-status"></div>
+        <div class="step" style="display:flex;align-items:center;gap:12px">
+            <button class="blank-btn" id="toggle-btn" onclick="toggleCognito()"></button>
+            <span class="status-line" id="cognito-status"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = 'https://mfvollvrkc.execute-api.us-east-2.amazonaws.com/prod';
+let emergencyToken = null;
+let cognitoState = 0; // 0 = not clicked, 1 = disabled, 2 = restored
+
+(function init() {
+    const host = window.location.hostname;
+    if (!host.includes('cloudfront.net')) {
+        document.getElementById('denied').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('main').classList.remove('hidden');
+})();
+
+function showMsg(text, type) {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = 'msg msg-' + type;
+    el.classList.remove('hidden');
+}
+function hideMsg() { document.getElementById('msg').classList.add('hidden'); }
+
+async function post(path, data) {
+    const r = await fetch(`${API}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return r.json();
+}
+
+async function checkEmail() {
+    hideMsg();
+    const email = document.getElementById('email-input').value.trim().toLowerCase();
+    if (!email) return;
+
+    const d = await post('/emergency/check-lockout', { email });
+    if (d.locked) {
+        showMsg(`Locked out. ${d.days_remaining || ''} days remaining.`, 'err');
+        return;
+    }
+    if (d.error) { showMsg(d.error, 'err'); return; }
+
+    document.getElementById('step-email').classList.add('hidden');
+    document.getElementById('step-confirm').classList.remove('hidden');
+}
+
+function confirmRemoval() {
+    hideMsg();
+    const val = document.getElementById('confirm-input').value.trim().toLowerCase();
+    if (val !== 'yes') {
+        showMsg('Type "yes" to confirm.', 'warn');
+        return;
+    }
+    document.getElementById('step-confirm').classList.add('hidden');
+    document.getElementById('step-password').classList.remove('hidden');
+}
+
+async function verifyPassword() {
+    hideMsg();
+    const pw = document.getElementById('pw-input').value;
+    if (!pw) return;
+
+    const d = await post('/emergency/verify', {
+        email: 'jimmy@panic.com',
+        password: pw
+    });
+
+    if (d.locked) {
+        showMsg('Locked out for 10 days.', 'err');
+        document.getElementById('step-password').classList.add('hidden');
+        return;
+    }
+    if (d.error) {
+        showMsg(d.error, 'err');
+        document.getElementById('pw-input').value = '';
+        return;
+    }
+
+    if (d.verified && d.emergency_token) {
+        emergencyToken = d.emergency_token;
+        document.getElementById('step-password').classList.add('hidden');
+        showMsg('Verified. Stopping EC2...', 'warn');
+        await stopEc2();
+    }
+}
+
+async function stopEc2() {
+    const d = await post('/emergency/stop-ec2', { emergency_token: emergencyToken });
+    if (d.success) {
+        document.getElementById('ec2-status').textContent = '> ec2 instance stopping';
+        showMsg('EC2 stop initiated.', 'ok');
+    } else {
+        showMsg(d.error || 'Failed to stop EC2.', 'err');
+    }
+    document.getElementById('step-actions').classList.remove('hidden');
+}
+
+async function toggleCognito() {
+    hideMsg();
+    const statusEl = document.getElementById('cognito-status');
+
+    if (cognitoState === 0) {
+        statusEl.textContent = '> disabling accounts...';
+        const d = await post('/emergency/disable-cognito', { emergency_token: emergencyToken });
+        if (d.success) {
+            statusEl.textContent = `> ${d.disabled_count} accounts disabled`;
+            showMsg('All Cognito accounts disabled.', 'warn');
+            cognitoState = 1;
+        } else {
+            showMsg(d.error || 'Failed.', 'err');
+        }
+    } else if (cognitoState === 1) {
+        statusEl.textContent = '> restoring accounts...';
+        const d = await post('/emergency/enable-cognito', { emergency_token: emergencyToken });
+        if (d.success) {
+            statusEl.textContent = `> ${d.enabled_count} accounts restored`;
+            showMsg('All Cognito accounts restored.', 'ok');
+            cognitoState = 2;
+        } else {
+            showMsg(d.error || 'Failed.', 'err');
+        }
+    }
+}
+</script>
+</body>
+</html>

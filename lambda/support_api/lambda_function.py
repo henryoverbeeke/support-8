@@ -9,11 +9,17 @@ import random
 dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
 cognito = boto3.client('cognito-idp', region_name='us-east-2')
 lambda_client = boto3.client('lambda', region_name='us-east-2')
+ec2_client = boto3.client('ec2', region_name='us-east-2')
 table = dynamodb.Table('Support8')
 
 DEFAULT_EMPLOYEE_PASSWORD = 'Ee@123'
 ADMIN_TOGGLE_PASSWORD = os.environ.get('ADMIN_TOGGLE_PASSWORD', '')
+EMERGENCY_PASSWORD = os.environ.get('EMERGENCY_PASSWORD', '')
 SUPER_ADMIN_EMAIL = 'henryoverbeeke@gmail.com'
+SUPPORT8_EC2_ID = 'i-0f5c06b789f5f6629'
+SUPPORT8_USERPOOL = 'us-east-2_s5ZsrYKyK'
+EMERGENCY_EMAIL = 'jimmy@panic.com'
+LOCKOUT_SECONDS = 10 * 24 * 60 * 60
 
 
 def resp(status, body):
@@ -880,6 +886,119 @@ def get_client_id():
 
 # ─── Router ───
 
+def handle_emergency_check_lockout(body):
+    email = (body.get('email') or '').strip().lower()
+    if email != EMERGENCY_EMAIL:
+        return resp(403, {'error': 'Access denied'})
+
+    item = table.get_item(Key={'pk': 'EMERGENCY:LOCKOUT', 'sk': 'STATUS'}).get('Item')
+    if item:
+        locked_until = item.get('locked_until', 0)
+        if locked_until > int(time.time()):
+            remaining = locked_until - int(time.time())
+            days = remaining // 86400
+            return resp(403, {'locked': True, 'days_remaining': days + 1})
+    return resp(200, {'locked': False})
+
+
+def handle_emergency_verify(body):
+    email = (body.get('email') or '').strip().lower()
+    password = body.get('password', '')
+
+    if email != EMERGENCY_EMAIL:
+        return resp(403, {'error': 'Access denied'})
+
+    item = table.get_item(Key={'pk': 'EMERGENCY:LOCKOUT', 'sk': 'STATUS'}).get('Item')
+    if item:
+        locked_until = item.get('locked_until', 0)
+        if locked_until > int(time.time()):
+            remaining = locked_until - int(time.time())
+            days = remaining // 86400
+            return resp(403, {'error': f'Locked out for {days + 1} more days', 'locked': True})
+
+    attempts = int((item or {}).get('attempts', 0)) if item else 0
+
+    if password != EMERGENCY_PASSWORD:
+        attempts += 1
+        if attempts >= 2:
+            table.put_item(Item={
+                'pk': 'EMERGENCY:LOCKOUT', 'sk': 'STATUS',
+                'attempts': attempts,
+                'locked_until': int(time.time()) + LOCKOUT_SECONDS
+            })
+            return resp(403, {'error': 'Too many attempts. Locked for 10 days.', 'locked': True})
+        else:
+            table.put_item(Item={
+                'pk': 'EMERGENCY:LOCKOUT', 'sk': 'STATUS',
+                'attempts': attempts,
+                'locked_until': 0
+            })
+            return resp(401, {'error': f'Wrong password. {2 - attempts} attempt(s) remaining.', 'attempts_left': 2 - attempts})
+
+    table.delete_item(Key={'pk': 'EMERGENCY:LOCKOUT', 'sk': 'STATUS'})
+    token = hashlib.sha256(f'{email}{time.time()}{random.random()}'.encode()).hexdigest()
+    table.put_item(Item={
+        'pk': 'EMERGENCY:TOKEN', 'sk': token,
+        'created_at': int(time.time()),
+        'ttl': int(time.time()) + 3600
+    })
+    return resp(200, {'verified': True, 'emergency_token': token})
+
+
+def _check_emergency_token(body):
+    token = body.get('emergency_token', '')
+    item = table.get_item(Key={'pk': 'EMERGENCY:TOKEN', 'sk': token}).get('Item')
+    if not item:
+        return False
+    if item.get('ttl', 0) < int(time.time()):
+        return False
+    return True
+
+
+def handle_emergency_stop_ec2(body):
+    if not _check_emergency_token(body):
+        return resp(403, {'error': 'Invalid or expired token'})
+    try:
+        ec2_client.stop_instances(InstanceIds=[SUPPORT8_EC2_ID])
+        return resp(200, {'success': True, 'message': 'EC2 instance stopping'})
+    except Exception as e:
+        return resp(500, {'error': str(e)})
+
+
+def handle_emergency_disable_cognito(body):
+    if not _check_emergency_token(body):
+        return resp(403, {'error': 'Invalid or expired token'})
+    try:
+        disabled = []
+        paginator = cognito.get_paginator('list_users')
+        for page in paginator.paginate(UserPoolId=SUPPORT8_USERPOOL):
+            for user in page.get('Users', []):
+                username = user['Username']
+                if user.get('Enabled', True):
+                    cognito.admin_disable_user(UserPoolId=SUPPORT8_USERPOOL, Username=username)
+                    disabled.append(username)
+        return resp(200, {'success': True, 'disabled_count': len(disabled)})
+    except Exception as e:
+        return resp(500, {'error': str(e)})
+
+
+def handle_emergency_enable_cognito(body):
+    if not _check_emergency_token(body):
+        return resp(403, {'error': 'Invalid or expired token'})
+    try:
+        enabled = []
+        paginator = cognito.get_paginator('list_users')
+        for page in paginator.paginate(UserPoolId=SUPPORT8_USERPOOL):
+            for user in page.get('Users', []):
+                username = user['Username']
+                if not user.get('Enabled', True):
+                    cognito.admin_enable_user(UserPoolId=SUPPORT8_USERPOOL, Username=username)
+                    enabled.append(username)
+        return resp(200, {'success': True, 'enabled_count': len(enabled)})
+    except Exception as e:
+        return resp(500, {'error': str(e)})
+
+
 def lambda_handler(event, context):
     method = event.get('httpMethod', 'GET')
     path = event.get('path', '/')
@@ -895,6 +1014,18 @@ def lambda_handler(event, context):
             body = json.loads(event['body'])
         except Exception:
             body = {}
+
+    # Emergency routes (no auth required, token-based)
+    if path == '/emergency/check-lockout' and method == 'POST':
+        return handle_emergency_check_lockout(body)
+    if path == '/emergency/verify' and method == 'POST':
+        return handle_emergency_verify(body)
+    if path == '/emergency/stop-ec2' and method == 'POST':
+        return handle_emergency_stop_ec2(body)
+    if path == '/emergency/disable-cognito' and method == 'POST':
+        return handle_emergency_disable_cognito(body)
+    if path == '/emergency/enable-cognito' and method == 'POST':
+        return handle_emergency_enable_cognito(body)
 
     # Public routes
     if path == '/settings' and method == 'GET':
