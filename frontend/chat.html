@@ -143,6 +143,13 @@
         <p>This ticket has been resolved and closed. Start a new chat if you need more help.</p>
         <button class="land-btn land-btn-primary" style="max-width:220px" onclick="backToLanding()">New Chat</button>
     </div>
+
+    <div class="closed-overlay hidden" id="v-emergency">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c27803" stroke-width="2" style="margin-bottom:12px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h2>Service Unavailable</h2>
+        <p id="emergency-text" style="color:var(--muted);font-size:15px;margin-bottom:16px"></p>
+        <p style="color:var(--muted);font-size:13px">Please try again later.</p>
+    </div>
 </div>
 
 <script>
@@ -158,15 +165,26 @@ let companyName = '';
 let pollTimer = null;
 let lastMsgCount = 0;
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     if (!CODE) {
         document.getElementById('v-landing').innerHTML = '<h2>Invalid Link</h2><p style="color:var(--muted)">This chat link is not valid. Ask the company for a new link.</p>';
         return;
     }
+    try {
+        const s = await fetch(`${API}/settings`).then(r => r.json());
+        if (s.emergency_active) showEmergency(s.emergency_message);
+    } catch(e) {}
 });
 
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+function showEmergency(msg) {
+    document.getElementById('emergency-text').textContent = msg || 'Service is temporarily unavailable.';
+    hide('v-landing'); hide('messages'); hide('compose'); hide('ticket-banner'); hide('eta-banner');
+    show('v-emergency');
+    clearInterval(pollTimer);
+}
 
 async function startChat() {
     const name = document.getElementById('name-input').value.trim();
@@ -178,6 +196,7 @@ async function startChat() {
         body: JSON.stringify({ code: CODE, name })
     }).then(r => r.json());
 
+    if (d.emergency) { showEmergency(d.error); return; }
     if (d.error) {
         document.getElementById('land-err').textContent = d.error;
         document.getElementById('land-err').style.display = 'block';
@@ -211,6 +230,7 @@ async function lookupTicket() {
         body: JSON.stringify({ ticket_code: code })
     }).then(r => r.json());
 
+    if (d.emergency) { showEmergency(d.error); return; }
     if (d.error) {
         document.getElementById('land-err').textContent = d.error;
         document.getElementById('land-err').style.display = 'block';
@@ -237,6 +257,8 @@ async function lookupTicket() {
 
 async function loadMessages() {
     const d = await fetch(`${API}/public/chat/messages?code=${chatCode}&customer_id=${customerId}`).then(r => r.json());
+
+    if (d.emergency) { showEmergency(d.error); return; }
 
     if (d.closed || d.error === 'closed') {
         clearInterval(pollTimer);
@@ -314,6 +336,7 @@ async function sendMsg() {
         body: JSON.stringify({ code: chatCode, customer_id: customerId, message: msg, name: customerName })
     }).then(r => r.json());
 
+    if (d.emergency) { showEmergency(d.error); return; }
     if (d.error && d.error.includes('closed')) {
         clearInterval(pollTimer);
         hide('messages'); hide('compose'); hide('ticket-banner');

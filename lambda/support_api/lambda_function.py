@@ -227,7 +227,12 @@ def handle_toggle_paywall(auth, body):
 
 
 def handle_get_settings():
-    return resp(200, {'paywall_enabled': get_paywall_enabled()})
+    em = table.get_item(Key={'pk': 'SETTINGS', 'sk': 'EMERGENCY'}).get('Item', {})
+    return resp(200, {
+        'paywall_enabled': get_paywall_enabled(),
+        'emergency_active': bool(em.get('active', False)),
+        'emergency_message': em.get('message', '')
+    })
 
 
 def verify_stripe_session(session_id):
