@@ -93,10 +93,52 @@
         .inline-form input:focus,.inline-form textarea:focus{border-color:var(--purple)}
         .inline-form textarea{min-height:60px;resize:vertical;width:100%}
 
+        /* Table scroll wrapper */
+        .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+        /* Mobile tab bar */
+        .mobile-tabs{display:none;background:#fff;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+        .mobile-tab{display:inline-block;padding:12px 18px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.5px}
+        .mobile-tab.active{color:var(--purple);border-bottom-color:var(--purple)}
+
         @media(max-width:768px){
             .sidebar{display:none}
+            .mobile-tabs{display:block}
             .layout{flex-direction:column}
-            .main{padding:16px}
+            .main{padding:14px;padding-bottom:24px}
+            .topbar{padding:12px 14px}
+            .topbar-left span{font-size:14px}
+            .topbar-left .badge{font-size:9px;padding:2px 6px}
+            .topbar-right .email{display:none}
+            .topbar-right{gap:8px}
+            .btn-ghost{padding:6px 10px;font-size:11px}
+            .section h2{font-size:18px}
+            .section .desc{font-size:13px;margin-bottom:14px}
+            .card{padding:14px;margin-bottom:12px}
+            .card h3{font-size:14px;margin-bottom:10px}
+            .inline-form{flex-direction:column;align-items:stretch}
+            .inline-form input,.inline-form textarea{width:100%}
+            .inline-form>div{flex-direction:column!important;gap:8px!important}
+            .inline-form>div>*{width:100%}
+            .emergency-active{flex-direction:column;gap:8px;text-align:center}
+            .emergency-active span{font-size:13px}
+            .ab-chat-header{flex-direction:column;gap:8px;align-items:flex-start}
+            .ab-msgs{max-height:250px}
+            .ab-msg{max-width:88%}
+            .ab-compose input{font-size:14px;padding:10px 12px}
+            .auth-card{padding:28px 20px}
+            table{font-size:12px}
+            th{font-size:10px;padding:6px 8px}
+            td{padding:8px;font-size:12px}
+            .btn-sm{padding:6px 10px;font-size:11px}
+        }
+
+        @media(max-width:400px){
+            .topbar-left .badge{display:none}
+            .main{padding:10px}
+            .card{padding:12px;border-radius:8px}
+            .section h2{font-size:16px}
+            .ab-compose{padding:8px;gap:6px}
         }
     </style>
 </head>
@@ -126,6 +168,13 @@
             <a href="index.html" class="btn-ghost">Dashboard</a>
             <button class="btn-ghost" onclick="doLogout()">Sign Out</button>
         </div>
+    </div>
+
+    <div class="mobile-tabs" id="mobile-tabs">
+        <span class="mobile-tab active" data-sec="users" onclick="switchSection('users')">Users</span>
+        <span class="mobile-tab" data-sec="emergency" onclick="switchSection('emergency')">Emergency</span>
+        <span class="mobile-tab" data-sec="autobot" onclick="switchSection('autobot')">AutoBot</span>
+        <span class="mobile-tab" data-sec="ips" onclick="switchSection('ips')">IPs</span>
     </div>
 
     <div class="layout">
@@ -296,6 +345,7 @@ function doLogout() {
 
 function switchSection(sec) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
+    document.querySelectorAll('.mobile-tab').forEach(t => t.classList.toggle('active', t.dataset.sec === sec));
     document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === 'sec-' + sec));
     if (sec === 'users') loadUsers();
     if (sec === 'emergency') loadEmergencyStatus();
@@ -310,16 +360,16 @@ async function loadUsers() {
     const d = await apiFetch('/admin/users');
     if (d.error) { document.getElementById('users-table').textContent = d.error; return; }
     if (!d.users || !d.users.length) { document.getElementById('users-table').textContent = 'No users found.'; return; }
-    document.getElementById('users-table').innerHTML = `<table>
+    document.getElementById('users-table').innerHTML = `<div class="table-scroll"><table>
         <thead><tr><th>Email</th><th>Status</th><th>Enabled</th><th>Created</th><th>Action</th></tr></thead>
         <tbody>${d.users.map(u => `<tr>
-            <td>${esc(u.email)}</td>
+            <td style="white-space:nowrap">${esc(u.email)}</td>
             <td><span class="tag ${u.status==='CONFIRMED'?'tag-green':'tag-yellow'}">${u.status}</span></td>
             <td><span class="tag ${u.enabled?'tag-green':'tag-red'}">${u.enabled?'Yes':'No'}</span></td>
-            <td class="mono">${u.created ? u.created.split(' ')[0] : ''}</td>
+            <td class="mono" style="white-space:nowrap">${u.created ? u.created.split(' ')[0] : ''}</td>
             <td>${u.email === '${email}' ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteUser('${esc(u.email)}')">Delete</button>`}</td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
 async function deleteUser(target) {
@@ -373,17 +423,17 @@ async function loadAllChats() {
     const d = await apiFetch('/admin/chats/all');
     if (d.error) { document.getElementById('autobot-chats').textContent = d.error; return; }
     if (!d.chats || !d.chats.length) { document.getElementById('autobot-chats').textContent = 'No active conversations.'; return; }
-    document.getElementById('autobot-chats').innerHTML = `<table>
+    document.getElementById('autobot-chats').innerHTML = `<div class="table-scroll"><table>
         <thead><tr><th>Customer</th><th>Company</th><th>IP</th><th>Status</th><th>Disabled</th><th>Action</th></tr></thead>
         <tbody>${d.chats.map(c => `<tr>
-            <td><strong>${esc(c.customer_name)}</strong><br><span class="mono">${c.ticket_code||''}</span></td>
-            <td class="mono" style="font-size:11px">${esc(c.company_id)}</td>
-            <td class="mono">${esc(c.customer_ip)}</td>
+            <td style="white-space:nowrap"><strong>${esc(c.customer_name)}</strong><br><span class="mono">${c.ticket_code||''}</span></td>
+            <td class="mono" style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(c.company_id)}</td>
+            <td class="mono" style="white-space:nowrap">${esc(c.customer_ip)}</td>
             <td><span class="tag tag-${c.status==='waiting'?'yellow':c.status==='open'?'green':'purple'}">${c.status}</span></td>
             <td><span class="tag ${c.disabled?'tag-red':'tag-gray'}">${c.disabled?'Yes':'No'}</span></td>
             <td><button class="btn btn-outline btn-sm" onclick="openAutobotChat('${esc(c.company_id)}','${esc(c.customer_id)}','${esc(c.customer_name)}',${c.disabled})">Chat</button></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
 async function sendMassMessage() {
@@ -459,18 +509,18 @@ async function loadIps() {
     if (d.error) { document.getElementById('ips-table').textContent = d.error; return; }
     const ips = d.ips || [];
     if (!ips.length) { document.getElementById('ips-table').textContent = 'No tracked IPs yet.'; return; }
-    document.getElementById('ips-table').innerHTML = `<table>
+    document.getElementById('ips-table').innerHTML = `<div class="table-scroll"><table>
         <thead><tr><th>IP Address</th><th>Blocked</th><th>Sessions</th><th>Action</th></tr></thead>
         <tbody>${ips.map(i => `<tr>
-            <td class="mono">${esc(i.ip)}</td>
+            <td class="mono" style="white-space:nowrap">${esc(i.ip)}</td>
             <td><span class="tag ${i.blocked?'tag-red':'tag-gray'}">${i.blocked?'BLOCKED':'OK'}</span></td>
             <td>${(i.sessions||[]).map(s => `<div style="font-size:12px">${esc(s.customer_name)} <span class="mono">(${esc(s.company_id).substring(0,20)})</span></div>`).join('')}</td>
-            <td>${i.blocked
+            <td style="white-space:nowrap">${i.blocked
                 ? `<button class="btn btn-outline btn-sm" onclick="unblockIp('${esc(i.ip)}')">Unblock</button>`
                 : `<button class="btn btn-danger btn-sm" onclick="blockIpDirect('${esc(i.ip)}')">Block</button>`
             }</td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
 async function blockIp() {
