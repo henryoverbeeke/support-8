@@ -694,7 +694,7 @@ def resolve_chat_code(code):
     return None
 
 
-def handle_public_start_chat(body):
+def handle_public_start_chat(body, source_ip=''):
     code = body.get('code', '')
     customer_name = body.get('name', 'Customer')
 
@@ -711,6 +711,7 @@ def handle_public_start_chat(body):
         batch.put_item(Item={
             'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}',
             'customer_id': customer_id, 'customer_name': customer_name,
+            'customer_ip': source_ip,
             'ticket_code': ticket_code,
             'last_message': f'{customer_name} started a chat',
             'last_sender': 'system', 'unread': 1,
@@ -770,7 +771,7 @@ def handle_public_lookup(body):
     })
 
 
-def handle_public_send(body):
+def handle_public_send(body, source_ip=''):
     code = body.get('code', '')
     customer_id = body.get('customer_id', '')
     message = body.get('message', '').strip()
@@ -788,6 +789,9 @@ def handle_public_send(body):
     session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
     if 'Item' not in session:
         return resp(410, {'error': 'This ticket has been closed.'})
+
+    if session['Item'].get('disabled'):
+        return resp(403, {'error': 'This conversation has been disabled.'})
 
     ts = int(time.time() * 1000)
     msg_id = str(uuid.uuid4())
@@ -881,6 +885,320 @@ def get_client_id():
         if c['ClientName'] == 'Support8_AppClient':
             _client_id = c['ClientId']
             return _client_id
+    return None
+
+
+# ─── Super Admin helpers ───
+
+def _require_super_admin(auth, body):
+    if auth['email'] != SUPER_ADMIN_EMAIL:
+        return resp(403, {'error': 'Super admin access required'})
+    return None
+
+
+def _require_super_admin_pw(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    pw = body.get('password', '')
+    if pw != ADMIN_TOGGLE_PASSWORD:
+        return resp(403, {'error': 'Wrong password'})
+    return None
+
+
+# ─── Admin: User Management ───
+
+def handle_admin_list_users(auth):
+    err = _require_super_admin(auth, {})
+    if err:
+        return err
+    try:
+        users = []
+        paginator = cognito.get_paginator('list_users')
+        for page in paginator.paginate(UserPoolId=SUPPORT8_USERPOOL):
+            for u in page.get('Users', []):
+                attrs = {a['Name']: a['Value'] for a in u.get('Attributes', [])}
+                users.append({
+                    'username': u['Username'],
+                    'email': attrs.get('email', u['Username']),
+                    'status': u.get('UserStatus', ''),
+                    'enabled': u.get('Enabled', True),
+                    'created': str(u.get('UserCreateDate', '')),
+                    'modified': str(u.get('UserLastModifiedDate', ''))
+                })
+        return resp(200, {'users': users})
+    except Exception as e:
+        return resp(500, {'error': str(e)})
+
+
+def handle_admin_delete_user(auth, body):
+    err = _require_super_admin_pw(auth, body)
+    if err:
+        return err
+    target_email = body.get('email', '').strip().lower()
+    if not target_email:
+        return resp(400, {'error': 'email required'})
+    if target_email == SUPER_ADMIN_EMAIL:
+        return resp(400, {'error': 'Cannot delete super admin'})
+
+    try:
+        cognito.admin_delete_user(UserPoolId=SUPPORT8_USERPOOL, Username=target_email)
+    except Exception:
+        pass
+
+    table.delete_item(Key={'pk': f'COMPANY#{target_email}', 'sk': 'PROFILE'})
+    table.delete_item(Key={'pk': f'EMPLOYEE_LOOKUP#{target_email}', 'sk': 'META'})
+
+    return resp(200, {'deleted': target_email})
+
+
+# ─── Admin: Emergency Mode ───
+
+def handle_admin_emergency_status(auth):
+    err = _require_super_admin(auth, {})
+    if err:
+        return err
+    item = table.get_item(Key={'pk': 'SETTINGS', 'sk': 'EMERGENCY'}).get('Item', {})
+    return resp(200, {
+        'active': bool(item.get('active', False)),
+        'message': item.get('message', ''),
+        'activated_at': int(item.get('activated_at', 0))
+    })
+
+
+def handle_admin_emergency_activate(auth, body):
+    err = _require_super_admin_pw(auth, body)
+    if err:
+        return err
+    message = body.get('message', 'Service temporarily unavailable.')
+    table.put_item(Item={
+        'pk': 'SETTINGS', 'sk': 'EMERGENCY',
+        'active': True, 'message': message,
+        'activated_at': int(time.time())
+    })
+    return resp(200, {'active': True, 'message': message})
+
+
+def handle_admin_emergency_deactivate(auth, body):
+    err = _require_super_admin_pw(auth, body)
+    if err:
+        return err
+    table.put_item(Item={
+        'pk': 'SETTINGS', 'sk': 'EMERGENCY',
+        'active': False, 'message': '', 'activated_at': 0
+    })
+    return resp(200, {'active': False})
+
+
+# ─── Admin: AutoBot System ───
+
+def handle_admin_all_chats(auth):
+    err = _require_super_admin(auth, {})
+    if err:
+        return err
+    r = table.scan(
+        FilterExpression='begins_with(sk, :prefix) AND attribute_exists(customer_id)',
+        ExpressionAttributeValues={':prefix': 'CHATSESSION#'}
+    )
+    chats = []
+    for item in r.get('Items', []):
+        cid = item['pk'].replace('COMPANY#', '')
+        chats.append({
+            'company_id': cid,
+            'customer_id': item.get('customer_id', ''),
+            'customer_name': item.get('customer_name', ''),
+            'customer_ip': item.get('customer_ip', ''),
+            'ticket_code': item.get('ticket_code', ''),
+            'last_message': item.get('last_message', ''),
+            'priority': item.get('priority', 'normal'),
+            'status': item.get('status', 'open'),
+            'disabled': bool(item.get('disabled', False)),
+            'updated_at': int(item.get('updated_at', 0)),
+            'created_at': int(item.get('created_at', 0))
+        })
+    chats.sort(key=lambda c: c['updated_at'], reverse=True)
+    return resp(200, {'chats': chats})
+
+
+def handle_admin_autobot_send(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    cid = body.get('company_id', '')
+    customer_id = body.get('customer_id', '')
+    message = body.get('message', '').strip()
+    if not cid or not customer_id or not message:
+        return resp(400, {'error': 'company_id, customer_id, and message required'})
+
+    session = table.get_item(Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'})
+    if 'Item' not in session:
+        return resp(404, {'error': 'Chat not found'})
+
+    ts = int(time.time() * 1000)
+    msg_id = str(uuid.uuid4())
+    table.put_item(Item={
+        'pk': f'CHAT#{cid}#{customer_id}', 'sk': f'MSG#{ts}#{msg_id}',
+        'sender': 'company', 'sender_name': 'AutoBot',
+        'message': message, 'created_at': ts
+    })
+    table.update_item(
+        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+        UpdateExpression='SET last_message = :m, last_sender = :s, updated_at = :t',
+        ExpressionAttributeValues={':m': message, ':s': 'company', ':t': ts}
+    )
+    return resp(200, {'sent': True, 'created_at': ts})
+
+
+def handle_admin_autobot_mass(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    message = body.get('message', '').strip()
+    if not message:
+        return resp(400, {'error': 'message required'})
+
+    r = table.scan(
+        FilterExpression='begins_with(sk, :prefix) AND attribute_exists(customer_id)',
+        ExpressionAttributeValues={':prefix': 'CHATSESSION#'}
+    )
+    sent_count = 0
+    ts = int(time.time() * 1000)
+    for item in r.get('Items', []):
+        cid = item['pk'].replace('COMPANY#', '')
+        customer_id = item.get('customer_id', '')
+        if not customer_id:
+            continue
+        msg_id = str(uuid.uuid4())
+        table.put_item(Item={
+            'pk': f'CHAT#{cid}#{customer_id}', 'sk': f'MSG#{ts}#{msg_id}',
+            'sender': 'company', 'sender_name': 'AutoBot',
+            'message': message, 'created_at': ts
+        })
+        table.update_item(
+            Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+            UpdateExpression='SET last_message = :m, last_sender = :s, updated_at = :t',
+            ExpressionAttributeValues={':m': message, ':s': 'company', ':t': ts}
+        )
+        sent_count += 1
+    return resp(200, {'sent_count': sent_count})
+
+
+def handle_admin_chat_disable(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    cid = body.get('company_id', '')
+    customer_id = body.get('customer_id', '')
+    if not cid or not customer_id:
+        return resp(400, {'error': 'company_id and customer_id required'})
+    table.update_item(
+        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+        UpdateExpression='SET disabled = :t',
+        ExpressionAttributeValues={':t': True}
+    )
+    return resp(200, {'disabled': True})
+
+
+def handle_admin_chat_enable(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    cid = body.get('company_id', '')
+    customer_id = body.get('customer_id', '')
+    if not cid or not customer_id:
+        return resp(400, {'error': 'company_id and customer_id required'})
+    table.update_item(
+        Key={'pk': f'COMPANY#{cid}', 'sk': f'CHATSESSION#{customer_id}'},
+        UpdateExpression='SET disabled = :f',
+        ExpressionAttributeValues={':f': False}
+    )
+    return resp(200, {'disabled': False})
+
+
+# ─── Admin: IP Management ───
+
+def handle_admin_list_ips(auth):
+    err = _require_super_admin(auth, {})
+    if err:
+        return err
+    blocked = table.scan(
+        FilterExpression='begins_with(pk, :prefix)',
+        ExpressionAttributeValues={':prefix': 'BLOCKED_IP#'}
+    )
+    blocked_ips = []
+    for item in blocked.get('Items', []):
+        blocked_ips.append({
+            'ip': item['pk'].replace('BLOCKED_IP#', ''),
+            'blocked_at': int(item.get('blocked_at', 0)),
+            'reason': item.get('reason', '')
+        })
+
+    tracked = table.scan(
+        FilterExpression='begins_with(sk, :prefix) AND attribute_exists(customer_ip)',
+        ExpressionAttributeValues={':prefix': 'CHATSESSION#'},
+        ProjectionExpression='customer_id, customer_name, customer_ip, pk, updated_at'
+    )
+    ip_map = {}
+    for item in tracked.get('Items', []):
+        ip = item.get('customer_ip', '')
+        if not ip:
+            continue
+        if ip not in ip_map:
+            ip_map[ip] = {'ip': ip, 'sessions': [], 'blocked': False}
+        ip_map[ip]['sessions'].append({
+            'customer_id': item.get('customer_id', ''),
+            'customer_name': item.get('customer_name', ''),
+            'company_id': item['pk'].replace('COMPANY#', ''),
+            'updated_at': int(item.get('updated_at', 0))
+        })
+    for bip in blocked_ips:
+        if bip['ip'] in ip_map:
+            ip_map[bip['ip']]['blocked'] = True
+        else:
+            ip_map[bip['ip']] = {'ip': bip['ip'], 'sessions': [], 'blocked': True}
+
+    return resp(200, {'ips': list(ip_map.values()), 'blocked_ips': blocked_ips})
+
+
+def handle_admin_block_ip(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    ip = body.get('ip', '').strip()
+    reason = body.get('reason', '')
+    if not ip:
+        return resp(400, {'error': 'ip required'})
+    table.put_item(Item={
+        'pk': f'BLOCKED_IP#{ip}', 'sk': 'META',
+        'blocked_at': int(time.time()), 'reason': reason
+    })
+    return resp(200, {'blocked': ip})
+
+
+def handle_admin_unblock_ip(auth, body):
+    err = _require_super_admin(auth, body)
+    if err:
+        return err
+    ip = body.get('ip', '').strip()
+    if not ip:
+        return resp(400, {'error': 'ip required'})
+    table.delete_item(Key={'pk': f'BLOCKED_IP#{ip}', 'sk': 'META'})
+    return resp(200, {'unblocked': ip})
+
+
+# ─── IP & Emergency checks for public routes ───
+
+def _check_ip_blocked(source_ip):
+    if not source_ip:
+        return False
+    item = table.get_item(Key={'pk': f'BLOCKED_IP#{source_ip}', 'sk': 'META'})
+    return 'Item' in item
+
+
+def _check_emergency_mode():
+    item = table.get_item(Key={'pk': 'SETTINGS', 'sk': 'EMERGENCY'}).get('Item', {})
+    if item.get('active'):
+        return item.get('message', 'Service temporarily unavailable.')
     return None
 
 
@@ -1005,6 +1323,11 @@ def lambda_handler(event, context):
     headers = event.get('headers') or {}
     params = event.get('queryStringParameters') or {}
     body = {}
+    source_ip = ''
+    try:
+        source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '')
+    except Exception:
+        pass
 
     if method == 'OPTIONS':
         return resp(200, {})
@@ -1027,7 +1350,14 @@ def lambda_handler(event, context):
     if path == '/emergency/enable-cognito' and method == 'POST':
         return handle_emergency_enable_cognito(body)
 
-    # Public routes
+    # Public routes -- check IP block and emergency mode
+    if path.startswith('/public/chat/'):
+        if _check_ip_blocked(source_ip):
+            return resp(403, {'error': 'Access denied'})
+        em = _check_emergency_mode()
+        if em:
+            return resp(503, {'error': em, 'emergency': True})
+
     if path == '/settings' and method == 'GET':
         return handle_get_settings()
     if path == '/auth/signup' and method == 'POST':
@@ -1035,11 +1365,11 @@ def lambda_handler(event, context):
     if path == '/auth/login' and method == 'POST':
         return handle_login(body)
     if path == '/public/chat/start' and method == 'POST':
-        return handle_public_start_chat(body)
+        return handle_public_start_chat(body, source_ip)
     if path == '/public/chat/lookup' and method == 'POST':
         return handle_public_lookup(body)
     if path == '/public/chat/send' and method == 'POST':
-        return handle_public_send(body)
+        return handle_public_send(body, source_ip)
     if path == '/public/chat/messages' and method == 'GET':
         return handle_public_messages(params)
 
@@ -1076,5 +1406,33 @@ def lambda_handler(event, context):
         return handle_create_employee(auth, body)
     if path == '/employees/delete' and method == 'POST':
         return handle_delete_employee(auth, body)
+
+    # Super admin panel routes
+    if path == '/admin/users' and method == 'GET':
+        return handle_admin_list_users(auth)
+    if path == '/admin/users/delete' and method == 'POST':
+        return handle_admin_delete_user(auth, body)
+    if path == '/admin/emergency/status' and method == 'GET':
+        return handle_admin_emergency_status(auth)
+    if path == '/admin/emergency/activate' and method == 'POST':
+        return handle_admin_emergency_activate(auth, body)
+    if path == '/admin/emergency/deactivate' and method == 'POST':
+        return handle_admin_emergency_deactivate(auth, body)
+    if path == '/admin/chats/all' and method == 'GET':
+        return handle_admin_all_chats(auth)
+    if path == '/admin/autobot/send' and method == 'POST':
+        return handle_admin_autobot_send(auth, body)
+    if path == '/admin/autobot/mass' and method == 'POST':
+        return handle_admin_autobot_mass(auth, body)
+    if path == '/admin/chats/disable' and method == 'POST':
+        return handle_admin_chat_disable(auth, body)
+    if path == '/admin/chats/enable' and method == 'POST':
+        return handle_admin_chat_enable(auth, body)
+    if path == '/admin/ips' and method == 'GET':
+        return handle_admin_list_ips(auth)
+    if path == '/admin/ips/block' and method == 'POST':
+        return handle_admin_block_ip(auth, body)
+    if path == '/admin/ips/unblock' and method == 'POST':
+        return handle_admin_unblock_ip(auth, body)
 
     return resp(404, {'error': f'Not found: {method} {path}'})

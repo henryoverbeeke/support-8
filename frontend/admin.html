@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support8 — Admin Panel</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg:#f6f9fc;--surface:#fff;--border:#e3e8ee;--purple:#635bff;--purple-h:#7a73ff;--text:#1a1f36;--muted:#697386;--danger:#df1b41;--success:#30b130;--warn:#c27803;--navy:#0a2540}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+        .hidden{display:none!important}
+
+        /* Top bar */
+        .topbar{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+        .topbar-left{display:flex;align-items:center;gap:10px}
+        .topbar-left span{font-size:16px;font-weight:700}
+        .topbar-left .badge{font-size:10px;background:rgba(223,27,65,.2);color:#ff6b6b;padding:3px 8px;border-radius:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+        .topbar-right{display:flex;align-items:center;gap:12px}
+        .topbar-right .email{font-size:12px;opacity:.6}
+        .btn-ghost{background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+        .btn-ghost:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+
+        /* Auth */
+        .auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+        .auth-card{background:#fff;border-radius:12px;padding:40px;max-width:400px;width:90%;box-shadow:0 12px 50px rgba(0,0,0,.08)}
+        .auth-card h2{font-size:22px;font-weight:700;margin-bottom:4px}
+        .auth-card .sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+        .field{margin-bottom:14px}
+        .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+        .field input{width:100%;padding:11px 14px;border-radius:8px;border:1px solid var(--border);font-size:14px;outline:none;transition:.15s}
+        .field input:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(99,91,255,.1)}
+        .btn{padding:11px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+        .btn-primary{background:var(--purple);color:#fff;width:100%}
+        .btn-primary:hover{background:var(--purple-h)}
+        .btn-sm{padding:7px 14px;font-size:12px}
+        .btn-danger{background:var(--danger);color:#fff}
+        .btn-danger:hover{background:#c4143a}
+        .btn-warn{background:var(--warn);color:#fff}
+        .btn-warn:hover{background:#a66802}
+        .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
+        .btn-outline:hover{background:var(--bg)}
+        .err{background:#fef2f2;border:1px solid #fecaca;color:var(--danger);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px}
+        .ok{background:#f0fdf4;border:1px solid #bbf7d0;color:var(--success);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px}
+
+        /* Layout */
+        .layout{display:flex;min-height:calc(100vh - 50px)}
+        .sidebar{width:220px;background:#fff;border-right:1px solid var(--border);padding:16px 0;flex-shrink:0}
+        .nav-item{padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:.1s}
+        .nav-item:hover{color:var(--text);background:var(--bg)}
+        .nav-item.active{color:var(--purple);border-left-color:var(--purple);background:rgba(99,91,255,.04)}
+        .main{flex:1;padding:28px;overflow-y:auto}
+        .section{display:none}
+        .section.active{display:block}
+        .section h2{font-size:20px;font-weight:700;margin-bottom:4px}
+        .section .desc{font-size:14px;color:var(--muted);margin-bottom:20px}
+
+        /* Cards & tables */
+        .card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+        .card h3{font-size:15px;font-weight:700;margin-bottom:12px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{text-align:left;padding:8px 12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:11px;border-bottom:1px solid var(--border)}
+        td{padding:10px 12px;border-bottom:1px solid #f0f3f7}
+        tr:hover{background:var(--bg)}
+        .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase}
+        .tag-green{background:rgba(48,177,48,.08);color:var(--success)}
+        .tag-red{background:rgba(223,27,65,.08);color:var(--danger)}
+        .tag-yellow{background:rgba(194,120,3,.08);color:var(--warn)}
+        .tag-purple{background:rgba(99,91,255,.08);color:var(--purple)}
+        .tag-gray{background:#f0f3f7;color:var(--muted)}
+        .mono{font-family:'SF Mono',monospace;font-size:12px;color:var(--muted)}
+
+        /* Emergency banner */
+        .emergency-active{background:var(--danger);color:#fff;padding:14px 20px;border-radius:10px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+        .emergency-active span{font-weight:700;font-size:14px}
+
+        /* AutoBot chat */
+        .ab-chat{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+        .ab-chat-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:space-between}
+        .ab-chat-header strong{font-size:14px}
+        .ab-msgs{max-height:300px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
+        .ab-msg{max-width:75%;padding:8px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+        .ab-msg-bot{background:var(--purple);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+        .ab-msg-cust{background:#f0f3f7;color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+        .ab-msg-sys{align-self:center;font-size:11px;color:var(--muted)}
+        .ab-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
+        .ab-compose input{flex:1;padding:10px 14px;border-radius:20px;border:1px solid var(--border);font-size:13px;outline:none}
+        .ab-compose input:focus{border-color:var(--purple)}
+        .ab-compose button{padding:10px 18px;border-radius:20px;border:none;background:var(--purple);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+
+        /* Inline form */
+        .inline-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .inline-form input,.inline-form textarea{padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;outline:none;transition:.15s}
+        .inline-form input:focus,.inline-form textarea:focus{border-color:var(--purple)}
+        .inline-form textarea{min-height:60px;resize:vertical;width:100%}
+
+        @media(max-width:768px){
+            .sidebar{display:none}
+            .layout{flex-direction:column}
+            .main{padding:16px}
+        }
+    </style>
+</head>
+<body>
+
+<!-- Auth -->
+<div id="v-auth" class="auth-wrap">
+    <div class="auth-card">
+        <h2>Admin Panel</h2>
+        <p class="sub">Super admin access only</p>
+        <div id="auth-err" class="err hidden"></div>
+        <div class="field"><label>Email</label><input id="auth-email" type="email" placeholder="admin@email.com"></div>
+        <div class="field"><label>Password</label><input id="auth-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+    </div>
+</div>
+
+<!-- App -->
+<div id="v-app" class="hidden">
+    <div class="topbar">
+        <div class="topbar-left">
+            <span>Support8</span>
+            <span class="badge">Admin Panel</span>
+        </div>
+        <div class="topbar-right">
+            <span class="email" id="admin-email"></span>
+            <a href="index.html" class="btn-ghost">Dashboard</a>
+            <button class="btn-ghost" onclick="doLogout()">Sign Out</button>
+        </div>
+    </div>
+
+    <div class="layout">
+        <div class="sidebar">
+            <div class="nav-item active" data-sec="users" onclick="switchSection('users')">Users</div>
+            <div class="nav-item" data-sec="emergency" onclick="switchSection('emergency')">Emergency</div>
+            <div class="nav-item" data-sec="autobot" onclick="switchSection('autobot')">AutoBot System</div>
+            <div class="nav-item" data-sec="ips" onclick="switchSection('ips')">IP Management</div>
+        </div>
+
+        <div class="main">
+            <!-- USERS -->
+            <div class="section active" id="sec-users">
+                <h2>User Management</h2>
+                <p class="desc">View and manage all Cognito users. Deletion requires your password.</p>
+                <div id="users-msg" class="hidden"></div>
+                <div class="card">
+                    <div id="users-table">Loading...</div>
+                </div>
+            </div>
+
+            <!-- EMERGENCY -->
+            <div class="section" id="sec-emergency">
+                <h2>Emergency Controls</h2>
+                <p class="desc">Disable all conversations and show a custom message to users and staff.</p>
+                <div id="emergency-msg" class="hidden"></div>
+                <div id="emergency-banner" class="hidden"></div>
+                <div class="card">
+                    <h3>Emergency Mode</h3>
+                    <div id="emergency-status" style="margin-bottom:12px"></div>
+                    <div class="inline-form" id="emergency-form">
+                        <textarea id="em-message" placeholder="Message to show users (e.g. Service under maintenance)" style="width:100%"></textarea>
+                        <div style="display:flex;gap:8px;width:100%">
+                            <input id="em-password" type="password" placeholder="Your password" style="flex:1">
+                            <button class="btn btn-danger" onclick="activateEmergency()">Activate</button>
+                            <button class="btn btn-outline" onclick="deactivateEmergency()">Deactivate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AUTOBOT -->
+            <div class="section" id="sec-autobot">
+                <h2>AutoBot System</h2>
+                <p class="desc">Send messages as AutoBot to individual or all conversations.</p>
+                <div id="autobot-msg" class="hidden"></div>
+
+                <div class="card">
+                    <h3>Mass Message</h3>
+                    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Send a message to ALL active conversations at once.</p>
+                    <div class="inline-form">
+                        <input id="mass-msg" placeholder="Type message for all chats..." style="flex:1">
+                        <button class="btn btn-primary btn-sm" onclick="sendMassMessage()">Send to All</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>All Conversations</h3>
+                    <div id="autobot-chats">Loading...</div>
+                </div>
+
+                <div id="autobot-chatview" class="hidden">
+                    <div class="ab-chat" id="ab-chat-container">
+                        <div class="ab-chat-header">
+                            <strong id="ab-chat-name"></strong>
+                            <div style="display:flex;gap:6px">
+                                <button class="btn btn-outline btn-sm" id="ab-disable-btn" onclick="toggleChatDisable()">Disable</button>
+                                <button class="btn btn-outline btn-sm" onclick="closeAutobotChat()">Close</button>
+                            </div>
+                        </div>
+                        <div class="ab-msgs" id="ab-msgs"></div>
+                        <div class="ab-compose">
+                            <input id="ab-input" placeholder="Message as AutoBot..." onkeydown="if(event.key==='Enter')sendAutobotMsg()">
+                            <button onclick="sendAutobotMsg()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IPS -->
+            <div class="section" id="sec-ips">
+                <h2>IP Management</h2>
+                <p class="desc">Track customer IPs and block suspicious addresses.</p>
+                <div id="ips-msg" class="hidden"></div>
+
+                <div class="card">
+                    <h3>Block an IP</h3>
+                    <div class="inline-form">
+                        <input id="block-ip-input" placeholder="IP address (e.g. 192.168.1.1)" style="flex:1">
+                        <input id="block-ip-reason" placeholder="Reason (optional)" style="flex:1">
+                        <button class="btn btn-danger btn-sm" onclick="blockIp()">Block</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Tracked IPs</h3>
+                    <div id="ips-table">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = 'https://mfvollvrkc.execute-api.us-east-2.amazonaws.com/prod';
+let token = localStorage.getItem('s8_token');
+let email = localStorage.getItem('s8_email');
+let abChat = null; // current autobot chat {company_id, customer_id, customer_name, disabled}
+let abPoll = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (token && email) enterApp();
+});
+
+async function apiFetch(path, opts = {}) {
+    const h = {'Content-Type':'application/json', ...opts.headers};
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    const r = await fetch(`${API}${path}`, {...opts, headers: h});
+    return r.json();
+}
+
+function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = type === 'err' ? 'err' : 'ok';
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+async function doLogin() {
+    const em = document.getElementById('auth-email').value;
+    const pw = document.getElementById('auth-pass').value;
+    const d = await apiFetch('/auth/login', {method:'POST', body: JSON.stringify({email:em, password:pw})});
+    if (d.error) {
+        document.getElementById('auth-err').textContent = d.error;
+        document.getElementById('auth-err').classList.remove('hidden');
+        return;
+    }
+    token = d.access_token;
+    email = em;
+    localStorage.setItem('s8_token', token);
+    localStorage.setItem('s8_email', email);
+    localStorage.setItem('s8_role', d.role);
+    enterApp();
+}
+
+async function enterApp() {
+    const co = await apiFetch('/company');
+    if (co.error || !co.is_super_admin) {
+        document.getElementById('auth-err').textContent = 'Super admin access required.';
+        document.getElementById('auth-err').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('v-auth').classList.add('hidden');
+    document.getElementById('v-app').classList.remove('hidden');
+    document.getElementById('admin-email').textContent = email;
+    loadUsers();
+    loadEmergencyStatus();
+}
+
+function doLogout() {
+    token = null; email = null;
+    localStorage.removeItem('s8_token');
+    localStorage.removeItem('s8_email');
+    localStorage.removeItem('s8_role');
+    location.reload();
+}
+
+function switchSection(sec) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
+    document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === 'sec-' + sec));
+    if (sec === 'users') loadUsers();
+    if (sec === 'emergency') loadEmergencyStatus();
+    if (sec === 'autobot') loadAllChats();
+    if (sec === 'ips') loadIps();
+}
+
+function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ─── USERS ───
+async function loadUsers() {
+    const d = await apiFetch('/admin/users');
+    if (d.error) { document.getElementById('users-table').textContent = d.error; return; }
+    if (!d.users || !d.users.length) { document.getElementById('users-table').textContent = 'No users found.'; return; }
+    document.getElementById('users-table').innerHTML = `<table>
+        <thead><tr><th>Email</th><th>Status</th><th>Enabled</th><th>Created</th><th>Action</th></tr></thead>
+        <tbody>${d.users.map(u => `<tr>
+            <td>${esc(u.email)}</td>
+            <td><span class="tag ${u.status==='CONFIRMED'?'tag-green':'tag-yellow'}">${u.status}</span></td>
+            <td><span class="tag ${u.enabled?'tag-green':'tag-red'}">${u.enabled?'Yes':'No'}</span></td>
+            <td class="mono">${u.created ? u.created.split(' ')[0] : ''}</td>
+            <td>${u.email === '${email}' ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteUser('${esc(u.email)}')">Delete</button>`}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+async function deleteUser(target) {
+    const pw = prompt('Enter your password to confirm deletion of ' + target);
+    if (!pw) return;
+    const d = await apiFetch('/admin/users/delete', {method:'POST', body: JSON.stringify({email: target, password: pw})});
+    if (d.error) { showMsg('users-msg', d.error, 'err'); return; }
+    showMsg('users-msg', `Deleted ${target}`, 'ok');
+    loadUsers();
+}
+
+// ─── EMERGENCY ───
+async function loadEmergencyStatus() {
+    const d = await apiFetch('/admin/emergency/status');
+    const banner = document.getElementById('emergency-banner');
+    const status = document.getElementById('emergency-status');
+    if (d.active) {
+        banner.innerHTML = `<div class="emergency-active"><span>EMERGENCY MODE ACTIVE: ${esc(d.message)}</span></div>`;
+        banner.classList.remove('hidden');
+        status.innerHTML = `<span class="tag tag-red">ACTIVE</span> <span style="color:var(--muted);font-size:13px;margin-left:8px">${esc(d.message)}</span>`;
+    } else {
+        banner.classList.add('hidden');
+        status.innerHTML = '<span class="tag tag-green">INACTIVE</span>';
+    }
+}
+
+async function activateEmergency() {
+    const message = document.getElementById('em-message').value.trim();
+    const pw = document.getElementById('em-password').value;
+    if (!message) { showMsg('emergency-msg', 'Message required', 'err'); return; }
+    if (!pw) { showMsg('emergency-msg', 'Password required', 'err'); return; }
+    const d = await apiFetch('/admin/emergency/activate', {method:'POST', body: JSON.stringify({message, password: pw})});
+    if (d.error) { showMsg('emergency-msg', d.error, 'err'); return; }
+    showMsg('emergency-msg', 'Emergency mode activated', 'ok');
+    document.getElementById('em-password').value = '';
+    loadEmergencyStatus();
+}
+
+async function deactivateEmergency() {
+    const pw = document.getElementById('em-password').value;
+    if (!pw) { showMsg('emergency-msg', 'Password required', 'err'); return; }
+    const d = await apiFetch('/admin/emergency/deactivate', {method:'POST', body: JSON.stringify({password: pw})});
+    if (d.error) { showMsg('emergency-msg', d.error, 'err'); return; }
+    showMsg('emergency-msg', 'Emergency mode deactivated', 'ok');
+    document.getElementById('em-password').value = '';
+    loadEmergencyStatus();
+}
+
+// ─── AUTOBOT ───
+async function loadAllChats() {
+    const d = await apiFetch('/admin/chats/all');
+    if (d.error) { document.getElementById('autobot-chats').textContent = d.error; return; }
+    if (!d.chats || !d.chats.length) { document.getElementById('autobot-chats').textContent = 'No active conversations.'; return; }
+    document.getElementById('autobot-chats').innerHTML = `<table>
+        <thead><tr><th>Customer</th><th>Company</th><th>IP</th><th>Status</th><th>Disabled</th><th>Action</th></tr></thead>
+        <tbody>${d.chats.map(c => `<tr>
+            <td><strong>${esc(c.customer_name)}</strong><br><span class="mono">${c.ticket_code||''}</span></td>
+            <td class="mono" style="font-size:11px">${esc(c.company_id)}</td>
+            <td class="mono">${esc(c.customer_ip)}</td>
+            <td><span class="tag tag-${c.status==='waiting'?'yellow':c.status==='open'?'green':'purple'}">${c.status}</span></td>
+            <td><span class="tag ${c.disabled?'tag-red':'tag-gray'}">${c.disabled?'Yes':'No'}</span></td>
+            <td><button class="btn btn-outline btn-sm" onclick="openAutobotChat('${esc(c.company_id)}','${esc(c.customer_id)}','${esc(c.customer_name)}',${c.disabled})">Chat</button></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+async function sendMassMessage() {
+    const msg = document.getElementById('mass-msg').value.trim();
+    if (!msg) return;
+    const d = await apiFetch('/admin/autobot/mass', {method:'POST', body: JSON.stringify({message: msg})});
+    if (d.error) { showMsg('autobot-msg', d.error, 'err'); return; }
+    showMsg('autobot-msg', `Sent to ${d.sent_count} conversations`, 'ok');
+    document.getElementById('mass-msg').value = '';
+}
+
+function openAutobotChat(companyId, customerId, name, disabled) {
+    abChat = {company_id: companyId, customer_id: customerId, customer_name: name, disabled: !!disabled};
+    document.getElementById('ab-chat-name').textContent = name + ' (AutoBot)';
+    document.getElementById('ab-disable-btn').textContent = disabled ? 'Enable' : 'Disable';
+    document.getElementById('autobot-chatview').classList.remove('hidden');
+    loadAutobotMessages();
+    clearInterval(abPoll);
+    abPoll = setInterval(loadAutobotMessages, 2500);
+}
+
+function closeAutobotChat() {
+    clearInterval(abPoll);
+    abChat = null;
+    document.getElementById('autobot-chatview').classList.add('hidden');
+}
+
+async function loadAutobotMessages() {
+    if (!abChat) return;
+    const d = await apiFetch(`/chat/messages?customer_id=${abChat.customer_id}`);
+    if (d.error) return;
+    const wrap = document.getElementById('ab-msgs');
+    const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 60;
+    wrap.innerHTML = (d.messages || []).map(m => {
+        if (m.sender === 'system') return `<div class="ab-msg ab-msg-sys">${esc(m.message)}</div>`;
+        const cls = m.sender === 'company' ? 'ab-msg-bot' : 'ab-msg-cust';
+        const label = m.sender === 'company' ? m.sender_name || 'Agent' : '';
+        return `<div class="ab-msg ${cls}">${label ? `<div style="font-size:10px;font-weight:700;opacity:.7;margin-bottom:2px">${esc(label)}</div>` : ''}${esc(m.message)}</div>`;
+    }).join('');
+    if (atBottom) wrap.scrollTop = wrap.scrollHeight;
+}
+
+async function sendAutobotMsg() {
+    if (!abChat) return;
+    const input = document.getElementById('ab-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    await apiFetch('/admin/autobot/send', {method:'POST', body: JSON.stringify({
+        company_id: abChat.company_id,
+        customer_id: abChat.customer_id,
+        message: msg
+    })});
+    await loadAutobotMessages();
+}
+
+async function toggleChatDisable() {
+    if (!abChat) return;
+    const endpoint = abChat.disabled ? '/admin/chats/enable' : '/admin/chats/disable';
+    await apiFetch(endpoint, {method:'POST', body: JSON.stringify({
+        company_id: abChat.company_id,
+        customer_id: abChat.customer_id
+    })});
+    abChat.disabled = !abChat.disabled;
+    document.getElementById('ab-disable-btn').textContent = abChat.disabled ? 'Enable' : 'Disable';
+    showMsg('autobot-msg', abChat.disabled ? 'Conversation disabled' : 'Conversation enabled', 'ok');
+    loadAllChats();
+}
+
+// ─── IPS ───
+async function loadIps() {
+    const d = await apiFetch('/admin/ips');
+    if (d.error) { document.getElementById('ips-table').textContent = d.error; return; }
+    const ips = d.ips || [];
+    if (!ips.length) { document.getElementById('ips-table').textContent = 'No tracked IPs yet.'; return; }
+    document.getElementById('ips-table').innerHTML = `<table>
+        <thead><tr><th>IP Address</th><th>Blocked</th><th>Sessions</th><th>Action</th></tr></thead>
+        <tbody>${ips.map(i => `<tr>
+            <td class="mono">${esc(i.ip)}</td>
+            <td><span class="tag ${i.blocked?'tag-red':'tag-gray'}">${i.blocked?'BLOCKED':'OK'}</span></td>
+            <td>${(i.sessions||[]).map(s => `<div style="font-size:12px">${esc(s.customer_name)} <span class="mono">(${esc(s.company_id).substring(0,20)})</span></div>`).join('')}</td>
+            <td>${i.blocked
+                ? `<button class="btn btn-outline btn-sm" onclick="unblockIp('${esc(i.ip)}')">Unblock</button>`
+                : `<button class="btn btn-danger btn-sm" onclick="blockIpDirect('${esc(i.ip)}')">Block</button>`
+            }</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+async function blockIp() {
+    const ip = document.getElementById('block-ip-input').value.trim();
+    const reason = document.getElementById('block-ip-reason').value.trim();
+    if (!ip) return;
+    const d = await apiFetch('/admin/ips/block', {method:'POST', body: JSON.stringify({ip, reason})});
+    if (d.error) { showMsg('ips-msg', d.error, 'err'); return; }
+    showMsg('ips-msg', `Blocked ${ip}`, 'ok');
+    document.getElementById('block-ip-input').value = '';
+    document.getElementById('block-ip-reason').value = '';
+    loadIps();
+}
+
+async function blockIpDirect(ip) {
+    const reason = prompt('Reason for blocking ' + ip + ' (optional):') || '';
+    const d = await apiFetch('/admin/ips/block', {method:'POST', body: JSON.stringify({ip, reason})});
+    if (d.error) { showMsg('ips-msg', d.error, 'err'); return; }
+    showMsg('ips-msg', `Blocked ${ip}`, 'ok');
+    loadIps();
+}
+
+async function unblockIp(ip) {
+    if (!confirm(`Unblock ${ip}?`)) return;
+    const d = await apiFetch('/admin/ips/unblock', {method:'POST', body: JSON.stringify({ip})});
+    if (d.error) { showMsg('ips-msg', d.error, 'err'); return; }
+    showMsg('ips-msg', `Unblocked ${ip}`, 'ok');
+    loadIps();
+}
+</script>
+</body>
+</html>

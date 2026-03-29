@@ -451,6 +451,7 @@
             <span id="app-name" style="font-size:13px;font-weight:600"></span>
             <span class="role-badge" id="app-role"></span>
             <span class="email" id="app-email" style="font-size:12px"></span>
+            <a id="admin-link" href="admin.html" class="btn-ghost hidden" style="text-decoration:none;color:#697386">Admin Panel</a>
             <button class="btn-ghost" onclick="doLogout()">Sign Out</button>
         </div>
     </div>
@@ -679,8 +680,10 @@ async function enterApp() {
     if (S.isSuperAdmin) {
         document.getElementById('admin-bar').classList.remove('hidden');
         document.getElementById('paywall-toggle').checked = paywallOn;
+        document.getElementById('admin-link').classList.remove('hidden');
     } else {
         document.getElementById('admin-bar').classList.add('hidden');
+        document.getElementById('admin-link').classList.add('hidden');
     }
     if (S.role === 'admin') {
         document.getElementById('tab-team').style.display = '';
